@@ -134,7 +134,7 @@ const EditablePlanCard = ({ plan, onSave, onCancel, onDelete, loading, colors, i
         </div>
 
         <div className="flex items-center gap-3">
-          <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
+          <Check className="w-5 h-5 text-green-400 shrink-0" />
           <span className="text-slate-300">Cloud Storage</span>
         </div>
       </div>
@@ -142,11 +142,7 @@ const EditablePlanCard = ({ plan, onSave, onCancel, onDelete, loading, colors, i
       {/* Action Button */}
       {isNew ? (
         <EditActions onSave={handleSave} onCancel={handleCancel} loading={loading} createMode />
-      ) : (
-        <button className={`w-full ${colors.button} text-white font-semibold py-3 rounded-lg transition-colors shadow-lg cursor-default`}>
-          Active Plan
-        </button>
-      )}
+      ) : null}
     </div>
   );
 };
@@ -205,10 +201,6 @@ const StaticPlanCard = ({ plan, onEdit, onDelete, loading, colors, index }) => {
           <span className="text-slate-300">Cloud Storage</span>
         </div>
       </div>
-
-      <button className={`w-full ${colors.button} text-white font-semibold py-3 rounded-lg transition-colors shadow-lg cursor-default`}>
-        Active Plan
-      </button>
     </div>
   );
 };

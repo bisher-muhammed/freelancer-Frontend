@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Check, X, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Check, Loader2, AlertCircle, Plus, Zap, Layers, Clock, Briefcase, Calendar, TrendingDown, History, ArrowRight } from 'lucide-react';
 import { apiPrivate } from '@/lib/apiPrivate';
 import { useRouter } from 'next/navigation';
 
@@ -8,8 +8,9 @@ export default function SubscriptionsPage() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [userSubscription, setUserSubscription] = useState(null);
-  const [showActiveModal, setShowActiveModal] = useState(false);
+  const [userSubscriptions, setUserSubscriptions] = useState([]);
+  const [projectUsage, setProjectUsage] = useState([]);
+  const [totalUsedProjects, setTotalUsedProjects] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,12 +28,51 @@ export default function SubscriptionsPage() {
           const subscriptions = subscriptionResponse.data.results || subscriptionResponse.data;
           const subscriptionsArray = Array.isArray(subscriptions) ? subscriptions : [];
           
-          // Find active subscription
-          const activeSubscription = subscriptionsArray.find(sub => sub.is_active === true);
-          setUserSubscription(activeSubscription || null);
+          // Get all active subscriptions sorted by expiry date
+          const activeSubscriptions = subscriptionsArray.filter(sub => sub.is_active === true);
+          const sortedSubscriptions = activeSubscriptions.sort((a, b) => 
+            new Date(a.end_date) - new Date(b.end_date)
+          );
+          setUserSubscriptions(sortedSubscriptions || []);
         } catch (subErr) {
           console.log('No active subscription found:', subErr);
-          setUserSubscription(null);
+          setUserSubscriptions([]);
+        }
+
+        // Fetch project usage history
+        try {
+          const projectsResponse = await apiPrivate.get('/projects/');
+          const projects = projectsResponse.data.results || projectsResponse.data;
+          const projectsArray = Array.isArray(projects) ? projects : [];
+          
+          // Calculate total used projects
+          setTotalUsedProjects(projectsArray.length);
+          
+          // Simulate project usage by subscription (this would come from backend)
+          // For now, we'll simulate based on subscription order
+          const usage = [];
+          let remainingToAssign = projectsArray.length;
+          
+          userSubscriptions.forEach((sub, index) => {
+            const subProjects = Math.min(
+              remainingToAssign,
+              sub.plan?.max_projects - sub.remaining_projects || 0
+            );
+            if (subProjects > 0) {
+              usage.push({
+                subscriptionId: sub.id,
+                planName: getPlanName(sub.plan),
+                projectsUsed: subProjects,
+                remaining: sub.remaining_projects,
+                isCurrent: index === 0 && sub.remaining_projects > 0
+              });
+              remainingToAssign -= subProjects;
+            }
+          });
+          
+          setProjectUsage(usage);
+        } catch (projectsErr) {
+          console.log('Error fetching projects:', projectsErr);
         }
       } catch (err) {
         setError('Failed to load subscription plans.');
@@ -45,13 +85,6 @@ export default function SubscriptionsPage() {
   }, []);
 
   const handleSubscribe = (planId) => {
-    // Check if user already has an active subscription
-    if (userSubscription && userSubscription.is_active) {
-      setShowActiveModal(true);
-      return;
-    }
-    
-    // Redirect to checkout page with planId as parameter
     router.push(`/client/checkout?planId=${planId}`);
   };
 
@@ -60,17 +93,26 @@ export default function SubscriptionsPage() {
       {
         bg: 'from-red-500 to-orange-500',
         button: 'bg-red-500 hover:bg-red-600',
-        glow: 'hover:shadow-red-500/30'
+        glow: 'hover:shadow-red-500/30',
+        text: 'text-red-400',
+        light: 'bg-red-500/10',
+        progress: 'bg-red-500'
       },
       {
         bg: 'from-cyan-500 to-teal-400',
         button: 'bg-cyan-500 hover:bg-cyan-600',
-        glow: 'hover:shadow-cyan-500/30'
+        glow: 'hover:shadow-cyan-500/30',
+        text: 'text-cyan-400',
+        light: 'bg-cyan-500/10',
+        progress: 'bg-cyan-500'
       },
       {
         bg: 'from-blue-600 to-blue-500',
         button: 'bg-blue-600 hover:bg-blue-700',
-        glow: 'hover:shadow-blue-500/30'
+        glow: 'hover:shadow-blue-500/30',
+        text: 'text-blue-400',
+        light: 'bg-blue-500/10',
+        progress: 'bg-blue-500'
       }
     ];
     return colors[index % colors.length];
@@ -80,7 +122,7 @@ export default function SubscriptionsPage() {
     if (maxProjects === -1 || maxProjects > 100) {
       return 'Unlimited projects';
     }
-    return `Up to ${maxProjects} projects`;
+    return `${maxProjects} projects`;
   };
 
   const formatDuration = (days) => {
@@ -91,7 +133,11 @@ export default function SubscriptionsPage() {
 
   const getPlanName = (planId) => {
     const plan = plans.find(p => p.id === planId);
-    return plan ? plan.name : 'your current plan';
+    return plan ? plan.name : 'Unknown Plan';
+  };
+
+  const getPlanDetails = (planId) => {
+    return plans.find(p => p.id === planId);
   };
 
   const calculateDaysRemaining = (endDate) => {
@@ -101,6 +147,67 @@ export default function SubscriptionsPage() {
     const diffTime = end - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 ? diffDays : 0;
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  // Check if user has an active subscription for a specific plan
+  const hasActiveSubscriptionForPlan = (planId) => {
+    return userSubscriptions.some(sub => sub.plan === planId && sub.is_active);
+  };
+
+  // Get total remaining projects across all active subscriptions
+  const getTotalRemainingProjects = () => {
+    return userSubscriptions.reduce((total, sub) => {
+      return total + (sub.remaining_projects > 0 ? sub.remaining_projects : 0);
+    }, 0);
+  };
+
+  // Group subscriptions by plan type
+  const getSubscriptionsByPlan = () => {
+    const grouped = {};
+    userSubscriptions.forEach(sub => {
+      const planId = sub.plan;
+      if (!grouped[planId]) {
+        grouped[planId] = [];
+      }
+      grouped[planId].push(sub);
+    });
+    return grouped;
+  };
+
+  // Get usage flow visualization
+  const getUsageFlow = () => {
+    const flow = [];
+    userSubscriptions.sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
+    
+    userSubscriptions.forEach((sub, index) => {
+      const plan = getPlanDetails(sub.plan);
+      const originalProjects = plan?.max_projects || 0;
+      const used = originalProjects - sub.remaining_projects;
+      const isCurrent = index === 0 && sub.remaining_projects > 0;
+      
+      flow.push({
+        id: sub.id,
+        planName: plan?.name || 'Unknown Plan',
+        originalProjects,
+        remaining: sub.remaining_projects,
+        used,
+        isCurrent,
+        expiresIn: calculateDaysRemaining(sub.end_date),
+        isExhausted: sub.remaining_projects === 0,
+        isExpired: !sub.is_active
+      });
+    });
+    
+    return flow;
   };
 
   if (loading) {
@@ -131,49 +238,12 @@ export default function SubscriptionsPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-linear-to-br bg-white">
-      {/* Active Subscription Modal */}
-      {showActiveModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4 z-50">
-          <div className="bg-slate-800 border border-cyan-500/50 rounded-2xl p-6 md:p-8 max-w-md w-full">
-            <CheckCircle className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
-            <h2 className="text-white text-2xl font-bold mb-2 text-center">Already Subscribed</h2>
-            <p className="text-gray-300 text-center mb-4">
-              You already have an active <span className="text-cyan-400 font-semibold">{getPlanName(userSubscription?.plan)}</span> subscription.
-            </p>
-            {userSubscription?.end_date && (
-              <div className="bg-slate-700/50 rounded-lg p-4 mb-6">
-                <p className="text-gray-300 text-sm text-center">
-                  <span className="font-semibold text-cyan-400">
-                    {calculateDaysRemaining(userSubscription.end_date)} days
-                  </span> remaining in your subscription
-                </p>
-              </div>
-            )}
-            <div className="bg-slate-700/50 rounded-lg p-4 mb-6">
-              <p className="text-gray-300 text-sm text-center">
-                You can manage your existing subscription from your dashboard.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button 
-                onClick={() => setShowActiveModal(false)}
-                className="flex-1 px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-              >
-                Close
-              </button>
-              <button 
-                onClick={() => router.push('/client/dashboard')}
-                className="flex-1 px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
-              >
-                Go to Dashboard
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+  const groupedSubscriptions = getSubscriptionsByPlan();
+  const usageFlow = getUsageFlow();
+  const currentSubscription = userSubscriptions.length > 0 ? userSubscriptions[0] : null;
 
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900">
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 lg:py-16">
         {/* Header Section */}
@@ -182,134 +252,477 @@ export default function SubscriptionsPage() {
             Subscription Plans
           </h1>
           <p className="text-base sm:text-lg lg:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Choose the perfect plan for your project needs
+            Manage and optimize your subscription portfolio
           </p>
+        </div>
+
+        {/* Active Subscriptions Section */}
+        {userSubscriptions.length > 0 && (
+          <div className="mb-12 md:mb-16">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <Layers className="w-6 h-6 text-cyan-400" />
+              <h2 className="text-2xl md:text-3xl font-bold text-white">
+                Your Subscription Portfolio
+              </h2>
+            </div>
+
+            {/* Current Usage Section */}
+            <div className="mb-8">
+              <div className="bg-slate-800/50 backdrop-blur-sm border border-cyan-500/30 rounded-xl p-6 mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <TrendingDown className="w-6 h-6 text-cyan-400" />
+                  <h3 className="text-xl font-semibold text-white">Current Usage Flow</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  {usageFlow.map((usage, index) => (
+                    <div key={usage.id} className="relative">
+                      {/* Connection Line */}
+                      {index < usageFlow.length - 1 && (
+                        <div className="absolute left-4 top-12 bottom-0 w-0.5 bg-gray-700 z-0"></div>
+                      )}
+                      
+                      <div className="relative z-10">
+                        <div className={`flex items-center gap-4 p-4 rounded-lg ${
+                          usage.isCurrent 
+                            ? 'bg-cyan-500/10 border border-cyan-500/30' 
+                            : usage.isExhausted
+                            ? 'bg-gray-800/50 border border-gray-700/50'
+                            : 'bg-slate-700/30 border border-gray-700/30'
+                        }`}>
+                          {/* Status Indicator */}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            usage.isCurrent 
+                              ? 'bg-cyan-500' 
+                              : usage.isExhausted
+                              ? 'bg-gray-600'
+                              : 'bg-blue-500'
+                          }`}>
+                            {usage.isCurrent ? (
+                              <Zap className="w-4 h-4 text-white" />
+                            ) : usage.isExhausted ? (
+                              <Check className="w-4 h-4 text-white" />
+                            ) : (
+                              <Clock className="w-4 h-4 text-white" />
+                            )}
+                          </div>
+                          
+                          {/* Plan Info */}
+                          <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div>
+                                <h4 className="font-semibold text-white">
+                                  {usage.planName}
+                                  {usage.isCurrent && (
+                                    <span className="ml-2 text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">
+                                      CURRENTLY IN USE
+                                    </span>
+                                  )}
+                                </h4>
+                                <p className="text-sm text-gray-400">
+                                  Expires in {usage.expiresIn} days
+                                </p>
+                              </div>
+                              
+                              {/* Progress Bar */}
+                              <div className="w-full sm:w-64">
+                                <div className="flex justify-between text-sm mb-1">
+                                  <span className="text-gray-300">
+                                    {usage.remaining} / {usage.originalProjects} remaining
+                                  </span>
+                                  <span className={`${
+                                    usage.isExhausted ? 'text-gray-400' : 'text-cyan-400'
+                                  }`}>
+                                    {usage.used} used
+                                  </span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full ${
+                                      usage.isCurrent ? 'bg-cyan-500' : 
+                                      usage.isExhausted ? 'bg-gray-600' : 'bg-blue-500'
+                                    }`}
+                                    style={{ width: `${(usage.used / usage.originalProjects) * 100}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Usage Pattern */}
+                            {usage.isCurrent && (
+                              <div className="mt-3 flex items-center gap-2 text-sm text-cyan-300">
+                                <ArrowRight className="w-4 h-4" />
+                                <span>Next {usageFlow[index + 1]?.planName || 'No more subscriptions'} after this expires</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Usage Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-slate-800/50 backdrop-blur-sm border border-cyan-500/30 rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+                      <Briefcase className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Total Available</p>
+                      <p className="text-3xl font-bold text-white">{getTotalRemainingProjects()}</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-400 text-sm">Projects across all plans</p>
+                </div>
+
+                <div className="bg-slate-800/50 backdrop-blur-sm border border-blue-500/30 rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                      <History className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Projects Used</p>
+                      <p className="text-3xl font-bold text-white">{totalUsedProjects}</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-400 text-sm">Total projects created</p>
+                </div>
+
+                <div className="bg-slate-800/50 backdrop-blur-sm border border-green-500/30 rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                      <Layers className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Active Plans</p>
+                      <p className="text-3xl font-bold text-white">
+                        {Object.keys(groupedSubscriptions).length}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-gray-400 text-sm">Different plan types</p>
+                </div>
+
+                <div className="bg-slate-800/50 backdrop-blur-sm border border-purple-500/30 rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Next Expiry</p>
+                      <p className="text-2xl font-bold text-white">
+                        {currentSubscription && calculateDaysRemaining(currentSubscription.end_date)} days
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-gray-400 text-sm">
+                    {currentSubscription && formatDate(currentSubscription.end_date)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Subscription List */}
+            <div className="bg-slate-800/30 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6">
+              <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-cyan-400" />
+                Subscription Details
+              </h3>
+              
+              {Object.entries(groupedSubscriptions).map(([planId, subscriptions], index) => {
+                const planDetails = getPlanDetails(parseInt(planId));
+                const colors = getColorClasses(index);
+                
+                return (
+                  <div key={planId} className="mb-6 last:mb-0">
+                    {/* Plan Header */}
+                    <div className={`${colors.light} rounded-lg p-4 mb-3`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <h4 className="text-lg font-bold text-white">{planDetails?.name || 'Unknown Plan'}</h4>
+                          <p className="text-gray-300 text-sm">
+                            {planDetails ? formatProjectLimit(planDetails.max_projects) : ''} • 
+                            {planDetails ? ` ${formatDuration(planDetails.duration_days)}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1 bg-white/10 rounded-full text-sm text-white">
+                            {subscriptions.length} active subscription{subscriptions.length > 1 ? 's' : ''}
+                          </span>
+                          <button
+                            onClick={() => handleSubscribe(planId)}
+                            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm flex items-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add More
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Individual Subscriptions for this plan */}
+                    <div className="space-y-3">
+                      {subscriptions.map((subscription, subIndex) => {
+                        const isCurrentInUse = currentSubscription?.id === subscription.id;
+                        const totalProjects = planDetails?.max_projects || 0;
+                        const usedProjects = totalProjects - subscription.remaining_projects;
+                        
+                        return (
+                          <div key={subscription.id} className="bg-slate-700/30 rounded-lg p-4">
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                              <div className="space-y-2">
+                                <p className="text-gray-400 text-xs">Subscription #{subIndex + 1}</p>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    isCurrentInUse ? 'bg-green-500 animate-pulse' : 
+                                    subscription.remaining_projects === 0 ? 'bg-gray-500' : 'bg-blue-500'
+                                  }`} />
+                                  <p className="text-white text-sm font-medium">
+                                    {isCurrentInUse ? 'Currently in use' : 
+                                     subscription.remaining_projects === 0 ? 'Exhausted' : 'Queued'}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <p className="text-gray-400 text-xs">Projects</p>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-white text-lg font-bold">
+                                    {subscription.remaining_projects}
+                                  </span>
+                                  <span className="text-gray-400 text-sm">
+                                    / {totalProjects} remaining
+                                  </span>
+                                </div>
+                                <p className="text-gray-500 text-xs">
+                                  {usedProjects} projects used
+                                </p>
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <p className="text-gray-400 text-xs">Started</p>
+                                <p className="text-white text-sm">
+                                  {formatDate(subscription.start_date)}
+                                </p>
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <p className="text-gray-400 text-xs">Expires</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-white text-sm">
+                                    {formatDate(subscription.end_date)}
+                                  </p>
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    calculateDaysRemaining(subscription.end_date) < 7 
+                                      ? 'bg-red-500/20 text-red-300' 
+                                      : calculateDaysRemaining(subscription.end_date) < 30
+                                      ? 'bg-yellow-500/20 text-yellow-300'
+                                      : 'bg-green-500/20 text-green-300'
+                                  }`}>
+                                    {calculateDaysRemaining(subscription.end_date)} days
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <p className="text-gray-400 text-xs">Status</p>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    subscription.is_active ? 'bg-green-500' : 'bg-red-500'
+                                  }`} />
+                                  <span className={`text-sm ${
+                                    subscription.is_active ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {subscription.is_active ? 'Active' : 'Expired'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Available Plans Section - Same as before but with improved context */}
+        <div className="mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-8">
+            Available Subscription Plans
+          </h2>
           
-          {/* Active Subscription Banner */}
-          {userSubscription && userSubscription.is_active && (
-            <div className="mt-6 inline-block bg-cyan-500/10 border border-cyan-500/50 rounded-xl px-6 py-3">
-              <p className="text-cyan-400 text-sm">
-                ✓ Active Subscription: <span className="font-semibold">{getPlanName(userSubscription.plan)}</span>
-                {userSubscription.end_date && (
-                  <span className="ml-2">
-                    ({calculateDaysRemaining(userSubscription.end_date)} days remaining)
-                  </span>
-                )}
-              </p>
+          {plans.length === 0 ? (
+            <div className="text-center py-12 md:py-16">
+              <p className="text-gray-400 text-base md:text-lg">No subscription plans available at the moment.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {plans.map((plan, index) => {
+                const colors = getColorClasses(index);
+                const isRecommended = index === 1;
+                const hasActivePlan = hasActiveSubscriptionForPlan(plan.id);
+                const planSubscriptions = groupedSubscriptions[plan.id] || [];
+                
+                return (
+                  <div
+                    key={plan.id}
+                    className={`relative bg-gradient-to-b from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-2xl border ${
+                      hasActivePlan ? 'border-green-500/50' : 'border-gray-700/50'
+                    } overflow-hidden transition-all duration-300 hover:scale-[1.02] ${colors.glow}`}
+                    style={{
+                      boxShadow: isRecommended 
+                        ? '0 10px 40px rgba(6, 182, 212, 0.3)' 
+                        : '0 5px 20px rgba(0, 0, 0, 0.3)',
+                    }}
+                  >
+                    {/* Plan Badge */}
+                    <div className="absolute top-4 right-4 z-10">
+                      {hasActivePlan && (
+                        <div className="flex items-center gap-1 bg-green-500/20 border border-green-500/50 text-green-300 text-xs font-bold px-3 py-1 rounded-full">
+                          <Check className="w-3 h-3" />
+                          <span>ACTIVE</span>
+                          {planSubscriptions.length > 1 && (
+                            <span className="ml-1">({planSubscriptions.length})</span>
+                          )}
+                        </div>
+                      )}
+                      {isRecommended && !hasActivePlan && (
+                        <div className="bg-gradient-to-r from-cyan-500 to-teal-400 text-white text-xs font-bold px-3 py-1 rounded-full">
+                          POPULAR
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Plan Header */}
+                    <div className={`p-6 bg-gradient-to-r ${colors.bg}`}>
+                      <h3 className="text-white text-xl font-bold mb-2">{plan.name}</h3>
+                      <div className="text-white">
+                        <span className="text-4xl font-bold">₹{parseFloat(plan.price).toFixed(0)}</span>
+                        <span className="text-white/80 ml-2">
+                          / {formatDuration(plan.duration_days)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Plan Features */}
+                    <div className="p-6 space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Check className="w-3 h-3 text-green-400" />
+                          </div>
+                          <span className="text-gray-300">
+                            {formatProjectLimit(plan.max_projects)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Check className="w-3 h-3 text-green-400" />
+                          </div>
+                          <span className="text-gray-300">
+                            {plan.duration_days} days access
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Check className="w-3 h-3 text-green-400" />
+                          </div>
+                          <span className="text-gray-300">
+                            Full marketplace access
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Button */}
+                      <button
+                        onClick={() => handleSubscribe(plan.id)}
+                        className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-300 mt-6 flex items-center justify-center gap-2 ${
+                          hasActivePlan 
+                            ? 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600' 
+                            : `bg-gradient-to-r ${colors.bg} hover:opacity-90`
+                        }`}
+                      >
+                        {hasActivePlan ? (
+                          <>
+                            <Plus className="w-4 h-4" />
+                            Add More Projects
+                          </>
+                        ) : (
+                          'Subscribe Now'
+                        )}
+                      </button>
+
+                      {/* Plan Stats */}
+                      {hasActivePlan && planSubscriptions.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-700/50">
+                          <div className="grid grid-cols-2 gap-3 text-center">
+                            <div>
+                              <p className="text-gray-400 text-xs">Active</p>
+                              <p className="text-green-400 font-bold">{planSubscriptions.length}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-400 text-xs">Total Projects</p>
+                              <p className="text-white font-bold">
+                                {planSubscriptions.reduce((sum, sub) => sum + sub.remaining_projects, 0)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Pricing Cards */}
-        {plans.length === 0 ? (
-          <div className="text-center py-12 md:py-16">
-            <p className="text-gray-400 text-base md:text-lg">No subscription plans available at the moment.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
-            {plans.map((plan, index) => {
-              const colors = getColorClasses(index);
-              const isRecommended = index === 1;
-              const isCurrentPlan = userSubscription?.plan === plan.id;
-              
-              return (
-                <div
-                  key={plan.id}
-                  className={`relative bg-linear-to-b from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-2xl lg:rounded-3xl border ${
-                    isCurrentPlan ? 'border-cyan-500' : 'border-gray-700/50'
-                  } overflow-hidden hover:border-gray-600 transition-all duration-300 hover:scale-105 ${colors.glow} w-full`}
-                  style={{
-                    boxShadow: isRecommended 
-                      ? '0 10px 40px rgba(6, 182, 212, 0.3)' 
-                      : '0 5px 20px rgba(0, 0, 0, 0.3)',
-                    transform: 'translateZ(0)'
-                  }}
-                >
-                  {/* Current Plan Badge */}
-                  {isCurrentPlan && (
-                    <div className="absolute top-0 right-0 bg-cyan-500 text-white text-xs font-bold px-4 py-1 rounded-bl-lg">
-                      ACTIVE
-                    </div>
-                  )}
-
-                  {/* Recommended Badge */}
-                  {isRecommended && !isCurrentPlan && (
-                    <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-400"></div>
-                  )}
-
-                  {/* Price Badge */}
-                  <div className="relative pt-8 md:pt-10 lg:pt-12 pb-6 md:pb-7 lg:pb-8 px-4 sm:px-6 lg:px-8">
-                    <div className={`inline-block bg-gradient-to-r ${colors.bg} rounded-xl lg:rounded-2xl px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 shadow-xl transform -rotate-2 w-full max-w-xs mx-auto`}>
-                      <div className="text-white text-lg sm:text-xl lg:text-2xl font-bold mb-1 text-center">
-                        {plan.name}
-                      </div>
-                      <div className="text-white text-center">
-                        <span className="text-3xl sm:text-4xl lg:text-5xl font-bold">₹{parseFloat(plan.price).toFixed(0)}</span>
-                        <span className="text-sm sm:text-base lg:text-lg ml-1 sm:ml-2 opacity-80 block sm:inline mt-1 sm:mt-0">
-                          Per {formatDuration(plan.duration_days)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Features */}
-                  <div className="px-4 sm:px-6 lg:px-8 pb-6 md:pb-7 lg:pb-8 space-y-3 sm:space-y-4">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-4 h-4 sm:w-5 sm:h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Check className="w-2 h-2 sm:w-3 sm:h-3 text-green-400" />
-                      </div>
-                      <span className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                        {formatProjectLimit(plan.max_projects)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-4 h-4 sm:w-5 sm:h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Check className="w-2 h-2 sm:w-3 sm:h-3 text-green-400" />
-                      </div>
-                      <span className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                        {plan.duration_days} days access
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-4 h-4 sm:w-5 sm:h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Check className="w-2 h-2 sm:w-3 sm:h-3 text-green-400" />
-                      </div>
-                      <span className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                        Browse freelancers
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Buy Button */}
-                  <div className="px-4 sm:px-6 lg:px-8 pb-6 md:pb-7 lg:pb-8">
-                    <button
-                      onClick={() => handleSubscribe(plan.id)}
-                      disabled={isCurrentPlan}
-                      className={`w-full py-3 sm:py-4 rounded-lg lg:rounded-xl font-semibold text-white transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-sm sm:text-base ${
-                        isCurrentPlan 
-                          ? 'bg-gray-600 cursor-not-allowed opacity-50' 
-                          : `${colors.button}`
-                      }`}
-                    >
-                      {isCurrentPlan ? 'Current Plan' : 'Buy Now'}
-                    </button>
-                  </div>
+        {/* How It Works Section */}
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-slate-800/30 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">
+              How Multiple Subscriptions Work
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-cyan-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <TrendingDown className="w-8 h-8 text-cyan-400" />
                 </div>
-              );
-            })}
+                <h3 className="text-white font-semibold mb-2">Sequential Usage</h3>
+                <p className="text-gray-400 text-sm">
+                  Projects are automatically deducted from subscriptions expiring soonest first.
+                  This prevents credits from expiring unused.
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Layers className="w-8 h-8 text-blue-400" />
+                </div>
+                <h3 className="text-white font-semibold mb-2">Plan Stacking</h3>
+                <p className="text-gray-400 text-sm">
+                  Mix different plans to create custom solutions. Each purchase adds to your project pool.
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Zap className="w-8 h-8 text-green-400" />
+                </div>
+                <h3 className="text-white font-semibold mb-2">Real-time Updates</h3>
+                <p className="text-gray-400 text-sm">
+                  See exactly which subscription is being used and how many projects remain in each.
+                </p>
+              </div>
+            </div>
           </div>
-        )}
-
-        {/* Footer Note */}
-        <div className="text-center mt-8 md:mt-12 lg:mt-16 px-4">
-          <p className="text-gray-400 text-sm sm:text-base mb-2">
-            All plans include access to our freelancer marketplace
-          </p>
-          <p className="text-xs sm:text-sm text-gray-500">
-            Need a custom plan? <a href="#" className="text-cyan-400 hover:underline transition-colors">Contact our team</a>
-          </p>
         </div>
       </main>
     </div>

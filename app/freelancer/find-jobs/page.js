@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation"; // Added missing import
 import { apiPrivate } from "@/lib/apiPrivate";
 import { 
   Search, 
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function OpenProjectsList() {
+  const router = useRouter(); // Added router initialization
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState('');
@@ -138,6 +140,10 @@ export default function OpenProjectsList() {
     }
   };
 
+  const navigateToDetails = (projectId) => {
+    router.push(`/freelancer/project-details/${projectId}`); // navigate to project details page
+  };
+
   const handleSearchChange = (e) => {
     setFilters({ ...filters, search: e.target.value });
     setPagination({ ...pagination, page: 1 });
@@ -172,10 +178,9 @@ export default function OpenProjectsList() {
     setFilters({ ...filters, sortBy: e.target.value });
   };
 
+  // Fixed: Removed duplicate and now calls navigateToDetails
   const handleApply = (projectId) => {
-    console.log('Applying to project:', projectId);
-    setSuccessMessage(`Application started for project #${projectId}`);
-    setTimeout(() => setSuccessMessage(''), 3000);
+    navigateToDetails(projectId); // navigate to details page where Apply button exists
   };
 
   const handleBookmark = (projectId) => {
