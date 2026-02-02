@@ -51,7 +51,7 @@ export default function ProjectDetailsPage() {
 
   const handleApply = () => {
     // Redirect to proposal page instead of applying directly
-    router.push(`/freelancer/proposals/${id}`);
+    router.push(`/freelancer/project-details/${id}/apply`);
   };
 
   const handleShare = () => {

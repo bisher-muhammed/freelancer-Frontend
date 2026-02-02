@@ -7,14 +7,15 @@ import { persistReducer, persistStore } from "redux-persist";
 import { FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from "redux-persist";
 import userReducer from "./slices/userSlice";
 import clientProfileReducer from "./slices/clientProfileSlice";
-import freelancerProfileReducer from "./slices/freelancerProfileSlice"
+import freelancerProfileReducer from "./slices/freelancerProfileSlice";
+
+
 
 // Combine all reducers
 const rootReducer = combineReducers({
   user: userReducer,
   clientProfile: clientProfileReducer,
   freelancerProfile:freelancerProfileReducer
-
 });
 
 // Persist configuration

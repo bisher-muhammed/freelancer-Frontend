@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; // Added missing import
+import { useRouter } from "next/navigation";
 import { apiPrivate } from "@/lib/apiPrivate";
 import { 
   Search, 
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function OpenProjectsList() {
-  const router = useRouter(); // Added router initialization
+  const router = useRouter();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState('');
@@ -111,7 +111,6 @@ export default function OpenProjectsList() {
       });
 
       const data = response.data;
-      console.log(data)
       
       // Handle paginated response
       if (data.results) {
@@ -141,7 +140,7 @@ export default function OpenProjectsList() {
   };
 
   const navigateToDetails = (projectId) => {
-    router.push(`/freelancer/project-details/${projectId}`); // navigate to project details page
+    router.push(`/freelancer/project-details/${projectId}`);
   };
 
   const handleSearchChange = (e) => {
@@ -178,13 +177,51 @@ export default function OpenProjectsList() {
     setFilters({ ...filters, sortBy: e.target.value });
   };
 
-  // Fixed: Removed duplicate and now calls navigateToDetails
   const handleApply = (projectId) => {
-    navigateToDetails(projectId); // navigate to details page where Apply button exists
+    navigateToDetails(projectId);
   };
 
-  const handleBookmark = (projectId) => {
-    console.log('Bookmarked project:', projectId);
+  const handleBookmark = async (projectId) => {
+    try {
+      const response = await apiPrivate.post('project/save-toggle/', {
+        project_id: projectId
+      });
+
+      const { saved, message } = response.data;
+
+      // Update the project in the state
+      setProjects(prevProjects => 
+        prevProjects.map(project => {
+          if (project.id === projectId) {
+            return {
+              ...project,
+              is_saved: saved,
+              saved_count: saved 
+                ? (project.saved_count || 0) + 1
+                : Math.max(0, (project.saved_count || 1) - 1)
+            };
+          }
+          return project;
+        })
+      );
+
+      // Show success message
+      setSuccessMessage(message);
+      setTimeout(() => setSuccessMessage(''), 3000);
+
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      
+      let errorMessage = 'Failed to save project. Please try again.';
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      setErrors(errorMessage);
+      setTimeout(() => setErrors(''), 5000);
+    }
   };
 
   const formatBudget = (project) => {
@@ -233,6 +270,14 @@ export default function OpenProjectsList() {
           </div>
         )}
 
+        {/* Error Message */}
+        {errors && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 flex items-center gap-2">
+            <XCircle className="w-5 h-5" />
+            {errors}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Browse Jobs</h1>
@@ -270,6 +315,36 @@ export default function OpenProjectsList() {
               <Filter className="w-4 h-4" />
               More Filters
             </button>
+          </div>
+
+          {/* Additional Filters Row */}
+          <div className="flex gap-4 mb-6">
+            <div className="relative flex-1">
+              <select
+                value={filters.status}
+                onChange={handleStatusChange}
+                className="w-full appearance-none px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">All Status</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            </div>
+            <div className="relative flex-1">
+              <select
+                value={filters.experience_level}
+                onChange={handleExperienceChange}
+                className="w-full appearance-none px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">All Experience Levels</option>
+                <option value="entry">Entry Level</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="expert">Expert</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            </div>
           </div>
 
           {/* Budget Range Slider */}
@@ -327,11 +402,6 @@ export default function OpenProjectsList() {
             <Loader2 className="inline-block animate-spin h-12 w-12 text-blue-600" />
             <p className="mt-4 text-gray-600">Loading projects...</p>
           </div>
-        ) : errors ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 flex items-center gap-2">
-            <XCircle className="w-5 h-5" />
-            {errors}
-          </div>
         ) : projects.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -363,13 +433,20 @@ export default function OpenProjectsList() {
                           </span>
                         )}
                       </div>
-                      <p className="text-gray-600 leading-relaxed">{project.description}</p>
+                      <p className="text-gray-600 leading-relaxed line-clamp-2">{project.description}</p>
                     </div>
                     <button
                       onClick={() => handleBookmark(project.id)}
-                      className="ml-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="ml-4 p-2 hover:bg-gray-100 rounded-lg transition-colors group"
+                      aria-label={project.is_saved ? "Remove from saved" : "Save project"}
                     >
-                      <Bookmark className="w-5 h-5 text-gray-400" />
+                      <Bookmark 
+                        className={`w-6 h-6 transition-colors ${
+                          project.is_saved 
+                            ? 'fill-yellow-400 text-yellow-400' 
+                            : 'text-gray-400 group-hover:text-yellow-400'
+                        }`}
+                      />
                     </button>
                   </div>
 
@@ -416,6 +493,12 @@ export default function OpenProjectsList() {
                       <Calendar className="w-4 h-4" />
                       <span>Posted {formatTimeAgo(project.created_at)}</span>
                     </div>
+                    {project.saved_count > 0 && (
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <Bookmark className="w-4 h-4 text-gray-400" />
+                        <span>{project.saved_count} saved</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Client Info and Apply Button */}

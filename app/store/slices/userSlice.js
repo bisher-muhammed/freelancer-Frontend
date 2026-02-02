@@ -41,16 +41,23 @@ export const loginUser = createAsyncThunk(
   "user/loginUser",
   async (credentials, { rejectWithValue }) => {
     try {
-      const res = await apiPublic.post("login/", credentials);
+      const timezone =
+        Intl.DateTimeFormat().resolvedOptions().timeZone;
+        console.log("🌍 Detected browser timezone:", timezone);
+
+      const res = await apiPublic.post("login/", {
+        ...credentials,
+        timezone,
+      });
+
       const { success, message, data } = res.data;
-      console.log("🔍 LOGIN API RESPONSE:", res.data);
 
       if (!success) {
         return rejectWithValue({ message: message || "Login failed" });
       }
 
-      // ✅ Normalize API response
       const { user, access, refresh } = data;
+
       return { user, access, refresh, message };
     } catch (err) {
       const msg =

@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Clock, Users, DollarSign, MoreVertical } from 'lucide-react';
 import { apiPrivate } from '@/lib/apiPrivate';
+import Link from 'next/link';
+
 
 export default function MyProjectsPage() {
   const [projects, setProjects] = useState([]);
@@ -228,9 +230,12 @@ export default function MyProjectsPage() {
                     </div>
                   </div>
 
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                  <Link href={`/client/my-projects/${project.id}`}>
+                  <button className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
                     View Details
                   </button>
+                </Link>
+
                 </div>
               </div>
             ))

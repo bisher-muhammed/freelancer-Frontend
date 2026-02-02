@@ -15,9 +15,15 @@ import {
   X,
   Shield,
   Database,
-  Lock
+  Lock,
+  AppleIcon,
+  ProjectorIcon,
+  BlocksIcon,
+  PaymentRequestUpdateEvent
+
   
 } from "lucide-react";
+import MeetingModal from "../client/SheduleMeeting";
 
 export default function AdminSidebar({ onClose }) {
   const pathname = usePathname();
@@ -28,6 +34,12 @@ export default function AdminSidebar({ onClose }) {
       label: "Dashboard",
       href: "/admin/dashboard",
     },
+    {
+      icon:AppleIcon,
+      label:"ScoreSetting",
+      href:"/admin/proposal-score"
+    },
+    
     {
       icon: Users,
       label: "User Management",
@@ -48,27 +60,50 @@ export default function AdminSidebar({ onClose }) {
       label: "Analytics",
       href: "/admin/analytics",
     },
+
+    {
+      icon:  Flag,
+      label: "Invoices",
+      href: "/admin/invoices",
+    },
+
     {
       icon: Flag,
       label: "Disputes",
       href: "/admin/disputes",
       badge: 3,
     },
+    
     {
       icon: MessageSquare,
-      label: "Messages",
-      href: "/admin/messages",
+      label: "Activity Logs",
+      href: "/admin/activity",
     },
     {
       icon: Lock,
       label: "Subscriptions",
       href: "/admin/subscription",
     },
+    
 
+    
+    
     {
       icon: Settings,
-      label: "Settings",
-      href: "/admin/settings",
+      label: "Tracking Privacy",
+      href: "/admin/tracking-privacy",
+    },
+
+    {
+      icon:BlocksIcon,
+      label: "Blling",
+      href: "/admin/billing",
+    },
+
+    {
+      icon: MeetingModal,
+      label: "Meetings",
+      href: "/admin/meetings"
     },
   ];
 

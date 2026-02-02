@@ -8,103 +8,75 @@ import { logout } from "../app/store/slices/userSlice";
 import { jwtDecode } from "jwt-decode";
 import { useRouter, usePathname } from "next/navigation";
 
-// Centralized token validation and logout
+import { NotificationsProvider } from "@/lib/providers/NotificationsProvider";
+
+// -------------------------------
+// Token Validation
+// -------------------------------
 function validateTokenAndLogout() {
   if (typeof window === "undefined") return false;
-  
+
   const access = localStorage.getItem("access");
   if (!access) return false;
 
   try {
     const { exp } = jwtDecode(access);
-    const isExpired = Date.now() >= exp * 1000;
-    
-    if (isExpired) {
-      // Clear tokens
+
+    if (Date.now() >= exp * 1000) {
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
-      return true; // Token expired
+      return true;
     }
-    return false; // Token valid
-  } catch (error) {
-    console.error("Token decode error:", error);
-    // Invalid token
+
+    return false;
+  } catch {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
-    return true; // Token invalid
+    return true;
   }
 }
 
+// -------------------------------
+// AppInitializer (ONLY Token Logic)
+// -------------------------------
 function AppInitializer({ children }) {
   const dispatch = useDispatch();
   const router = useRouter();
   const pathname = usePathname();
   const hasChecked = useRef(false);
 
+  // -------------------------------
+  // Initial token check
+  // -------------------------------
   useEffect(() => {
-    // Prevent multiple checks
     if (hasChecked.current) return;
     hasChecked.current = true;
 
-    // Public routes that don't require authentication
     const publicRoutes = ["/login", "/register", "/signup", "/", "/about"];
-    const isPublicRoute = publicRoutes.some(route => 
-      pathname === route || pathname.startsWith(route + "/")
+    const isPublicRoute = publicRoutes.some(
+      (route) => pathname === route || pathname.startsWith(route + "/")
     );
 
-    // Check token validity
-    const shouldLogout = validateTokenAndLogout();
-
-    if (shouldLogout && !isPublicRoute) {
-      console.log("Token expired or invalid - logging out");
+    if (validateTokenAndLogout() && !isPublicRoute) {
       dispatch(logout());
-      
-      // Use setTimeout to ensure dispatch completes before redirect
-      setTimeout(() => {
-        router.push("/login");
-      }, 100);
+      router.push("/login");
     }
-  }, [dispatch, router, pathname]);
-
-  // Set up periodic token check (every 5 minutes)
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      const publicRoutes = ["/login", "/register", "/signup", "/", "/about"];
-      const isPublicRoute = publicRoutes.some(route => 
-        pathname === route || pathname.startsWith(route + "/")
-      );
-
-      const shouldLogout = validateTokenAndLogout();
-
-      if (shouldLogout && !isPublicRoute) {
-        console.log("Token expired - logging out");
-        dispatch(logout());
-        clearInterval(intervalId);
-        
-        setTimeout(() => {
-          router.push("/login");
-        }, 100);
-      }
-    }, 5 * 60 * 1000); // Check every 5 minutes
-
-    return () => clearInterval(intervalId);
   }, [dispatch, router, pathname]);
 
   return children;
 }
 
+// -------------------------------
+// Providers Wrapper
+// -------------------------------
 export function Providers({ children }) {
   return (
     <Provider store={store}>
-      <PersistGate
-        loading={
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#227C70]"></div>
-          </div>
-        }
-        persistor={persistor}
-      >
-        <AppInitializer>{children}</AppInitializer>
+      <PersistGate persistor={persistor}>
+        {/* ✅ Notifications start ONCE here */}
+        <NotificationsProvider>
+          <AppInitializer>{children}</AppInitializer>
+        </NotificationsProvider>
       </PersistGate>
     </Provider>
   );

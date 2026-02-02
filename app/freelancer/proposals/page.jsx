@@ -12,7 +12,8 @@ import {
   Loader2,
   FileText,
   XCircle,
-  Filter
+  Filter,
+  Eye
 } from 'lucide-react';
 
 export default function MyProposalsPage() {
@@ -269,7 +270,7 @@ export default function MyProposalsPage() {
               <div
                 key={proposal.id}
                 className="bg-white rounded-lg shadow-sm p-4 sm:p-6 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => router.push(`/projects/${proposal.project?.id}`)}
+                onClick={() => router.push(`/freelancer/proposals/${proposal.id}`)}
               >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
                   <div className="flex-1">
@@ -299,7 +300,7 @@ export default function MyProposalsPage() {
                 </p>
 
                 {/* Proposal Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm mb-4">
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-gray-500 flex-shrink-0" />
                     <div>
@@ -335,6 +336,20 @@ export default function MyProposalsPage() {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/freelancer/proposals/${proposal.id}`);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                    View Details
+                  </button>
                 </div>
               </div>
             ))

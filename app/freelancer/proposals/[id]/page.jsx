@@ -3,214 +3,166 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiPrivate } from "@/lib/apiPrivate";
-import { 
-  Loader2, 
-  CheckCircle, 
-  XCircle, 
+import {
   ArrowLeft,
+  Loader2,
+  XCircle,
+  CheckCircle,
+  Clock,
+  DollarSign,
   Calendar,
-  MapPin 
+  MapPin,
+  Briefcase,
+  FileText,
+  Video,
+  AlertCircle,
+  ExternalLink,
+  User,
+  Building,
 } from "lucide-react";
 
-export default function ProposalPage() {
+export default function ProposalDetails() {
   const { id } = useParams();
   const router = useRouter();
 
-  const [project, setProject] = useState(null);
+  const [proposal, setProposal] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const [form, setForm] = useState({
-    cover_letter: "",
-    bid_fixed_price: "",
-    bid_hourly_rate: "",
-  });
-
-  // Fetch project details
   useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        const res = await apiPrivate.get(`/project/${id}/`);
-        setProject(res.data);
-      } catch (err) {
-        console.error("Error fetching project:", err);
-        setError("Failed to load project details. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchProject();
-    }
+    fetchProposalDetails();
   }, [id]);
 
-  // Handle form input changes
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const fetchProposalDetails = async () => {
+    setLoading(true);
     setError("");
-    setSuccess("");
-
-    // Validation
-    if (!form.cover_letter.trim()) {
-      setError("Cover letter is required.");
-      return;
-    }
-    
-    if (form.cover_letter.trim().length < 100) {
-      setError("Cover letter must be at least 100 characters.");
-      return;
-    }
-    
-    if (form.cover_letter.length > 2000) {
-      setError("Cover letter cannot exceed 2000 characters.");
-      return;
-    }
-
-    // Validate budget
-    if (project?.budget_type === "fixed") {
-      const amount = parseFloat(form.bid_fixed_price);
-      if (!amount || amount <= 0 || isNaN(amount)) {
-        setError("Please enter a valid bid amount.");
-        return;
-      }
-    }
-
-    if (project?.budget_type === "hourly") {
-      const rate = parseFloat(form.bid_hourly_rate);
-      if (!rate || rate <= 0 || isNaN(rate)) {
-        setError("Please enter a valid hourly rate.");
-        return;
-      }
-    }
-
-    setSubmitting(true);
-
     try {
-      const payload = {
-        project: id,
-        cover_letter: form.cover_letter,
-      };
-
-      // Add appropriate bid field based on project type
-      if (project.budget_type === "fixed") {
-        payload.bid_fixed_price = parseFloat(form.bid_fixed_price);
-      } else if (project.budget_type === "hourly") {
-        payload.bid_hourly_rate = parseFloat(form.bid_hourly_rate);
-      }
-
-      // Submit proposal
-      console.log("Submitting proposal with payload:", payload);
-      
-      const response = await apiPrivate.post("/proposal/apply/", payload);
-      console.log("Proposal response:", response.data);
-
-      // Check if response has success message
-      const successMessage = response.data.detail || 
-                            response.data.message || 
-                            "Proposal submitted successfully!";
-      
-      setSuccess(successMessage);
-      
-      // Redirect based on your app structure
-      // Options:
-      // 1. Redirect to freelancer proposals page
-      // 2. Redirect to project page
-      // 3. Redirect to dashboard
-      
-      setTimeout(() => {
-        // Try different routes - choose one based on your app
-        try {
-          // Option 1: Redirect to proposals list
-          router.push("/freelancer/proposals");
-          
-        } catch (redirectError) {
-          console.error("Redirect error:", redirectError);
-          // If redirect fails, just go to home
-        }
-      }, 2000);
-
+      const response = await apiPrivate.get(`/freelancer/my-proposals/${id}/`);
+      console.log("Proposal data:", response.data); // For debugging
+      setProposal(response.data);
     } catch (err) {
-      console.error("Submission error:", err);
-      
-      // Check for specific error cases
-      if (err.response?.status === 401) {
-        setError("Please log in to submit a proposal.");
-        setTimeout(() => router.push("/login"), 2000);
-        return;
-      }
-      
-      if (err.response?.status === 400) {
-        // Handle validation errors
-        const errorData = err.response.data;
-        
-        if (errorData.non_field_errors) {
-          setError(errorData.non_field_errors.join(" "));
-        } else if (errorData.detail) {
-          setError(errorData.detail);
-        } else if (typeof errorData === 'object') {
-          // Format field errors
-          const fieldErrors = Object.entries(errorData)
-            .map(([field, messages]) => {
-              const fieldName = field.replace(/_/g, ' ');
-              return `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
-            })
-            .join('. ');
-          setError(fieldErrors || "Please check your input.");
-        } else if (typeof errorData === 'string') {
-          setError(errorData);
-        } else {
-          setError("Failed to submit proposal. Please check your input.");
-        }
-      } else if (err.response?.status === 409) {
-        setError("You have already applied to this project.");
-      } else if (err.message) {
-        setError(err.message);
+      console.error("Error fetching proposal details:", err);
+      if (err.response?.status === 404) {
+        setError("Proposal not found");
+      } else if (err.response?.status === 403) {
+        setError("You don't have permission to view this proposal");
       } else {
-        setError("Network error. Please check your connection and try again.");
+        setError("Failed to load proposal details. Please try again.");
       }
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
-  // Loading state
+  const getStatusBadge = (status) => {
+    const statusLower = status?.toLowerCase() || "pending";
+    const styles = {
+      active: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", icon: Clock },
+      interview: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", icon: Video },
+      accepted: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", icon: CheckCircle },
+      declined: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", icon: XCircle },
+      pending: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200", icon: Clock },
+    };
+
+    const style = styles[statusLower] || styles.pending;
+    const Icon = style.icon;
+
+    return (
+      <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border ${style.bg} ${style.text} ${style.border}`}>
+        <Icon className="w-4 h-4" />
+        {status?.charAt(0).toUpperCase() + status?.slice(1) || "Pending"}
+      </span>
+    );
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "Not specified";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "Invalid date";
+    }
+  };
+
+  const formatDeliveryTime = (duration) => {
+    if (!duration) return "Not specified";
+    const map = {
+      "1_3_months": "1-3 months",
+      "3_6_months": "3-6 months",
+      "6_months_plus": "6+ months",
+    };
+    return map[duration] || duration.replace("_", " ");
+  };
+
+  const getMeetingStatus = (meeting) => {
+    if (!meeting?.start_time || !meeting?.end_time) {
+      return { text: "Unknown", color: "gray" };
+    }
+
+    const now = new Date();
+    const startTime = new Date(meeting.start_time);
+    const endTime = new Date(meeting.end_time);
+
+    if (now < startTime) return { text: "Upcoming", color: "blue" };
+    if (now >= startTime && now <= endTime) return { text: "In Progress", color: "green" };
+    return { text: "Completed", color: "gray" };
+  };
+
+  // Safe getter functions
+  const getClientInfo = () => {
+    const project = proposal?.project;
+    if (!project) return { company: "Client", city: "", country: "" };
+
+    const client = project.client || {};
+    return {
+      company: client.company_name || "Client",
+      city: client.city || "",
+      country: client.country || "",
+    };
+  };
+
+  const getBudgetInfo = () => {
+    const project = proposal?.project;
+    if (!project) return { type: "", amount: "", min: "", max: "" };
+
+    return {
+      type: project.budget_type || "fixed",
+      amount: project.fixed_budget || "",
+      min: project.hourly_min_rate || "",
+      max: project.hourly_max_rate || "",
+    };
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
         <Loader2 className="animate-spin w-10 h-10 text-blue-600 mb-4" />
-        <p className="text-gray-600">Loading project details...</p>
+        <p className="text-gray-600">Loading proposal details...</p>
       </div>
     );
   }
 
-  // Error state (project not found)
-  if (error && !project) {
+  if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
         <XCircle className="w-16 h-16 text-red-500 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Project not found</h2>
-        <p className="text-gray-600 mb-6 text-center max-w-md">{error}</p>
-        <div className="flex gap-4">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">{error}</h2>
+        <div className="flex gap-4 mt-6">
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/freelancer/proposals")}
             className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
           >
-            Browse Projects
+            Back to Proposals
           </button>
           <button
-            onClick={() => window.location.reload()}
+            onClick={fetchProposalDetails}
             className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
           >
             Try Again
@@ -220,217 +172,251 @@ export default function ProposalPage() {
     );
   }
 
-  // If project doesn't exist after loading
-  if (!project) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <XCircle className="w-16 h-16 text-red-500 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Project not found</h2>
-        <p className="text-gray-600 mb-6">The project you're looking for doesn't exist or has been removed.</p>
-        <button
-          onClick={() => router.push("/")}
-          className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-        >
-          Browse Projects
-        </button>
-      </div>
-    );
-  }
+  if (!proposal) return null;
 
-  // Check if user has already applied
-  const alreadyApplied = project.already_applied || false;
+  const project = proposal.project || {};
+  const clientInfo = getClientInfo();
+  const budgetInfo = getBudgetInfo();
+  const meetings = proposal.meetings || [];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Back button */}
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 group"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 group"
         >
           <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Back to Project</span>
+          <span className="font-medium">Back to Proposals</span>
         </button>
 
-        {/* Success Message */}
-        {success && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 text-green-700 flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 flex-shrink-0" />
-            <div>
-              <p className="font-medium">{success}</p>
-              <p className="text-sm mt-1">Redirecting to proposals page...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-            <div className="flex items-start gap-3">
-              <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Already Applied Warning */}
-        {alreadyApplied && (
-          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700">
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium">You have already applied to this project</p>
-                <p className="text-sm mt-1">You can view your application in your proposals.</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Project Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">{project.title}</h1>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4" />
-              Posted {new Date(project.created_at).toLocaleDateString()}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <MapPin className="w-4 h-4" />
-              {project.client?.city}, {project.client?.country}
-            </span>
-            <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
-              {project.budget_type === 'fixed' ? 'Fixed Price' : 'Hourly'}
-            </span>
-          </div>
-          <p className="text-gray-700 leading-relaxed">{project.description}</p>
-        </div>
-
-        {/* Proposal Form */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Submit Your Proposal</h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Cover Letter */}
-            <div>
-              <label className="block font-medium text-gray-900 mb-2">
-                Cover Letter <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="cover_letter"
-                rows={8}
-                value={form.cover_letter}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg p-4 focus:ring-2 focus:ring-black focus:border-transparent transition-all"
-                placeholder="Explain why you're the best fit for this project. Include relevant experience, your approach, and any questions you have..."
-                required
-                disabled={alreadyApplied || submitting}
-              />
-              <div className="flex justify-between mt-2">
-                <p className="text-sm text-gray-500">
-                  Minimum 100 characters
-                </p>
-                <p className={`text-sm ${
-                  form.cover_letter.length > 2000 ? 'text-red-500' : 
-                  form.cover_letter.length > 1500 ? 'text-yellow-500' : 
-                  'text-gray-500'
-                }`}>
-                  {form.cover_letter.length}/2000 characters
-                </p>
-              </div>
-            </div>
-
-            {/* Budget Input */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {project.budget_type === "fixed" && (
-                <div>
-                  <label className="block font-medium text-gray-900 mb-2">
-                    Your Bid Amount ($) <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                    <input
-                      type="number"
-                      name="bid_fixed_price"
-                      value={form.bid_fixed_price}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg p-4 pl-8 focus:ring-2 focus:ring-black focus:border-transparent transition-all"
-                      placeholder="Enter your total bid"
-                      min="1"
-                      step="0.01"
-                      required
-                      disabled={alreadyApplied || submitting}
-                    />
-                  </div>
-                  {project.fixed_budget && (
-                    <p className="text-sm text-gray-500 mt-2">
-                      Client's budget: ${parseFloat(project.fixed_budget).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {project.budget_type === "hourly" && (
-                <div>
-                  <label className="block font-medium text-gray-900 mb-2">
-                    Your Hourly Rate ($) <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                    <input
-                      type="number"
-                      name="bid_hourly_rate"
-                      value={form.bid_hourly_rate}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg p-4 pl-8 focus:ring-2 focus:ring-black focus:border-transparent transition-all"
-                      placeholder="Enter your hourly rate"
-                      min="1"
-                      step="0.01"
-                      required
-                      disabled={alreadyApplied || submitting}
-                    />
-                  </div>
-                  {project.hourly_min_rate && project.hourly_max_rate && (
-                    <p className="text-sm text-gray-500 mt-2">
-                      Client's range: ${project.hourly_min_rate} - ${project.hourly_max_rate}/hr
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={alreadyApplied || submitting}
-                className={`w-full py-4 rounded-lg font-medium text-lg transition-colors ${
-                  alreadyApplied
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : submitting
-                    ? "bg-gray-800 text-white cursor-wait"
-                    : "bg-black text-white hover:bg-gray-800"
-                }`}
-              >
-                {alreadyApplied ? (
-                  "Already Applied"
-                ) : submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Submitting Proposal...
-                  </span>
-                ) : (
-                  "Submit Proposal"
+        {/* Header Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
+                {project.title || "Project Title"}
+              </h1>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                <span className="flex items-center gap-1.5">
+                  <Building className="w-4 h-4" />
+                  {clientInfo.company}
+                </span>
+                {(clientInfo.city || clientInfo.country) && (
+                  <>
+                    <span>•</span>
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4" />
+                      {[clientInfo.city, clientInfo.country].filter(Boolean).join(", ")}
+                    </span>
+                  </>
                 )}
-              </button>
-              <p className="text-sm text-gray-500 text-center mt-3">
-                By submitting, you agree to our terms and conditions
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  <Briefcase className="w-4 h-4" />
+                  {budgetInfo.type === "fixed" ? "Fixed Price" : "Hourly Rate"}
+                </span>
+              </div>
+            </div>
+            <div>{getStatusBadge(proposal.status)}</div>
+          </div>
+
+          {/* Project Description */}
+          {project.description && (
+            <div className="pt-4 border-t border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Project Description</h3>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {project.description}
               </p>
             </div>
-          </form>
+          )}
+        </div>
+
+        {/* Proposal Details */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Your Proposal</h2>
+
+          {/* Bid Amount */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6 pb-6 border-b border-gray-200">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <DollarSign className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Your Bid</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {proposal.bid_fixed_price
+                    ? `$${parseFloat(proposal.bid_fixed_price).toLocaleString()}`
+                    : proposal.bid_hourly_rate
+                    ? `$${proposal.bid_hourly_rate}/hr`
+                    : "Not specified"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <Clock className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Project Duration</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {project.duration ? formatDeliveryTime(project.duration) : "Not specified"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-purple-50 rounded-lg">
+                <Calendar className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Submitted</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {formatDate(proposal.created_at)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Cover Letter */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <FileText className="w-5 h-5 text-gray-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Cover Letter</h3>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {proposal.cover_letter || "No cover letter provided"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Project Budget Info */}
+        {(budgetInfo.amount || (budgetInfo.min && budgetInfo.max)) && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-blue-900 mb-1">Client's Budget</h3>
+                <p className="text-sm text-blue-800">
+                  {budgetInfo.type === "fixed"
+                    ? `Fixed: $${parseFloat(budgetInfo.amount).toLocaleString()}`
+                    : `Hourly: $${budgetInfo.min} - $${budgetInfo.max}/hr`}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Meetings Section */}
+        {meetings.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Video className="w-5 h-5 text-gray-600" />
+              <h2 className="text-xl font-bold text-gray-900">Scheduled Meetings</h2>
+              <span className="ml-auto text-sm text-gray-500">
+                {meetings.length} {meetings.length === 1 ? "meeting" : "meetings"}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {meetings.map((meeting) => {
+                const status = getMeetingStatus(meeting);
+                return (
+                  <div
+                    key={meeting.id}
+                    className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 mb-1">{meeting.title || "Untitled Meeting"}</h3>
+                        {meeting.description && (
+                          <p className="text-sm text-gray-600">{meeting.description}</p>
+                        )}
+                      </div>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
+                          status.color === "blue"
+                            ? "bg-blue-50 text-blue-700"
+                            : status.color === "green"
+                            ? "bg-green-50 text-green-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            status.color === "blue"
+                              ? "bg-blue-500"
+                              : status.color === "green"
+                              ? "bg-green-500"
+                              : "bg-gray-500"
+                          }`}
+                        />
+                        {status.text}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Calendar className="w-4 h-4" />
+                        <span>
+                          {meeting.start_time
+                            ? new Date(meeting.start_time).toLocaleDateString("en-US", {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "No date set"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Clock className="w-4 h-4" />
+                        <span>
+                          {meeting.start_time
+                            ? `${new Date(meeting.start_time).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })} - ${new Date(meeting.end_time).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}`
+                            : "No time set"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {meeting.meeting_link && (
+                      <a
+                        href={meeting.meeting_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Video className="w-4 h-4" />
+                        Join Meeting
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+          <button
+            onClick={() => router.push("/freelancer/proposals")}
+            className="flex-1 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          >
+            Back to All Proposals
+          </button>
         </div>
       </div>
-    </div>
   );
 }

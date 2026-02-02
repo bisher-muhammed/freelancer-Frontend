@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, PlusCircle, Folder, Users, MessageSquare,Lock, X } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Folder, Users, MessageSquare,Lock, X,AppWindowIcon } from "lucide-react";
 
 export default function ClientSidebar({ onClose }) {
   const pathname = usePathname();
@@ -24,6 +24,25 @@ export default function ClientSidebar({ onClose }) {
       href: "/client/my-projects",
     },
     {
+    icon:AppWindowIcon,
+    label:"applications",
+    href:"/client/proposals"
+    },
+
+    
+    {
+      icon: Folder,
+      label: "contracts",
+      href: "/client/contract",
+    },
+
+    {
+      icon: Folder,
+      label: "offers",
+      href: "/client/offers",
+    },
+    
+    {
       icon: Users,
       label: "Browse Freelancers",
       href: "/client/browse-freelancers",
@@ -31,7 +50,14 @@ export default function ClientSidebar({ onClose }) {
     {
       icon: MessageSquare,
       label: "Messages",
-      href: "/client/messages",
+      href: "/client/chat",
+      badge: 3,
+    },
+
+    {
+      icon: MessageSquare,
+      label: "Meetings",
+      href: "/client/meetings",
       badge: 3,
     },
      {
