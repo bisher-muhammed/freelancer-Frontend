@@ -8,7 +8,7 @@ import { persistor } from "@/app/store/store";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import NotificationBell from "@/components/NotificationBell"; // ✅ ADD THIS
+import NotificationBell from "@/components/NotificationBell";
 
 export default function AdminHeader({ onMenuClick }) {
   const [scrolled, setScrolled] = useState(false);

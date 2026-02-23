@@ -8,7 +8,7 @@ import {
   ArrowLeft, Send, Paperclip, Smile, Check, CheckCheck,
   Users, Mic, Phone, Video, Info,
   Pin, Download, Reply, Trash2, Copy, MoreHorizontal,
-  Calendar, X, Maximize2, Hash, PhoneOff
+  Calendar, X, Maximize2, Hash, PhoneOff, Image as ImageIcon
 } from "lucide-react";
 import ZegoCall from "@/lib/hooks/ZegoCall";
 
@@ -164,111 +164,191 @@ export default function ChatRoomPage() {
     }
   }, [currentUser, router]);
 
+  // Remove selected image
+  const removeImage = (index) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   return (
-    <div className="flex h-screen bg-[#F0F2F5] dark:bg-gray-900 font-sans text-gray-900">
+    <div className="flex h-screen bg-white font-sans">
       {/* Video/Audio Call Overlay */}
       {(isVideoCallActive || isAudioCallActive) && (
         <ZegoCall 
           chatRoomId={chatId} 
           callType={callType}
           onEndCall={endCall}
-          userRole={currentUser?.role} // Make sure your user object has a 'role' field
+          userRole={currentUser?.role}
           chatId={chatId}
         />
       )}
 
       {/* Main Chat Interface */}
-      <div className={`flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300 ${
+      <div className={`flex-1 flex flex-col min-w-0 bg-white shadow-xl transition-all duration-300 ${
         (isVideoCallActive || isAudioCallActive) ? 'blur-sm opacity-50' : ''
       }`}>
         
-        {/* Modern Header */}
-        <header className="h-16 flex items-center justify-between px-4 border-b dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md z-10">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
-              <ArrowLeft className="w-5 h-5" />
+        {/* Enhanced Header with Better Contrast */}
+        <header className="h-18 flex items-center justify-between px-6 border-b-2 border-gray-200 bg-white z-10 shadow-sm">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => router.back()} 
+              className="p-2.5 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ArrowLeft className="w-6 h-6 text-gray-700" />
             </button>
-            <div className="relative cursor-pointer group">
-              <div className="w-10 h-10 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
-                {chatTitle?.charAt(0) || <Hash className="w-5 h-5" />}
+            
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md border-2 border-blue-300">
+                  {chatTitle?.charAt(0)?.toUpperCase() || <Hash className="w-6 h-6" />}
+                </div>
+                <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 border-2 border-white rounded-full shadow-sm ${
+                  isConnected ? 'bg-green-500' : 'bg-gray-400'
+                }`} />
               </div>
-              <div className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
-            </div>
-            <div>
-              <h1 className="font-semibold text-sm md:text-base leading-none">{chatTitle || "Group Chat"}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-xs text-green-600 font-medium">
-                  {isConnected ? 'Online' : 'Connecting...'}
-                </p>
-                <span className="text-xs text-gray-500">• {participants.length} members</span>
+              
+              <div>
+                <h1 className="font-bold text-lg text-gray-900 leading-tight">
+                  {chatTitle || "Chat Room"}
+                </h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className={`text-sm font-semibold ${
+                    isConnected ? 'text-green-600' : 'text-gray-500'
+                  }`}>
+                    {isConnected ? 'Online' : 'Connecting...'}
+                  </p>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-sm text-gray-600 font-medium">
+                    {participants.length} {participants.length === 1 ? 'member' : 'members'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 md:gap-3">
+
+          <div className="flex items-center gap-2">
             <button 
               onClick={startAudioCall}
-              className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors ${
-                isAudioCallActive ? 'text-green-600 bg-green-50' : ''
+              className={`p-3 hover:bg-gray-100 rounded-full transition-colors ${
+                isAudioCallActive ? 'bg-green-50 text-green-600' : 'text-gray-700'
               }`}
+              title="Audio Call"
             >
               <Phone className="w-5 h-5" />
             </button>
             <button 
               onClick={startVideoCall}
-              className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors ${
-                isVideoCallActive ? 'text-green-600 bg-green-50' : ''
+              className={`p-3 hover:bg-gray-100 rounded-full transition-colors ${
+                isVideoCallActive ? 'bg-green-50 text-green-600' : 'text-gray-700'
               }`}
+              title="Video Call"
             >
               <Video className="w-5 h-5" />
             </button>
-            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
-              <Info className="w-5 h-5 text-gray-600" />
+            <button 
+              className="p-3 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
+              title="Chat Info"
+            >
+              <Info className="w-5 h-5" />
             </button>
           </div>
         </header>
 
-        {/* Message Area */}
+        {/* Message Area with White Background */}
         <main 
           ref={containerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-4 space-y-1 bg-[#E5DDD5] dark:bg-gray-950 scroll-smooth"
-          style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/cubes.png')`, backgroundOpacity: 0.05 }}
+          className="flex-1 overflow-y-auto p-6 space-y-2 bg-gray-50"
         >
-          {groupedMessages.map((msg, idx) => (
-            <MessageItem 
-              key={msg.id || idx} 
-              msg={msg} 
-              isMe={isMessageFromCurrentUser(msg)}
-              currentUser={currentUser}
-              onReply={setReplyTo}
-            />
-          ))}
+          {groupedMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4 border-2 border-gray-200">
+                <Users className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No messages yet</h3>
+              <p className="text-gray-600 max-w-md">
+                Start the conversation by sending a message below
+              </p>
+            </div>
+          ) : (
+            groupedMessages.map((msg, idx) => (
+              <MessageItem 
+                key={msg.id || idx} 
+                msg={msg} 
+                isMe={isMessageFromCurrentUser(msg)}
+                currentUser={currentUser}
+                onReply={setReplyTo}
+              />
+            ))
+          )}
           <div ref={messagesEndRef} className="h-4" />
         </main>
 
-        {/* Dynamic Footer / Input */}
-        <footer className="bg-white dark:bg-gray-800 p-3 border-t dark:border-gray-700">
+        {/* Enhanced Footer / Input Area */}
+        <footer className="bg-white p-4 border-t-2 border-gray-200 shadow-lg">
+          {/* Reply Preview */}
           {replyTo && (
-            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 px-4 rounded-t-lg border-l-4 border-blue-500 mb-2">
-              <div className="text-xs">
-                <p className="font-bold text-blue-600">Replying to {replyTo.sender_name || 'User'}</p>
-                <p className="text-gray-500 truncate">{replyTo.content}</p>
+            <div className="flex items-center justify-between bg-blue-50 p-3 px-4 rounded-lg border-l-4 border-blue-600 mb-3 mx-2">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-blue-700 mb-0.5">
+                  Replying to {replyTo.sender_name || 'User'}
+                </p>
+                <p className="text-sm text-gray-700 truncate">{replyTo.content}</p>
               </div>
-              <button onClick={() => setReplyTo(null)}><X className="w-4 h-4" /></button>
+              <button 
+                onClick={() => setReplyTo(null)}
+                className="p-1.5 hover:bg-blue-100 rounded-full ml-2 flex-shrink-0"
+              >
+                <X className="w-4 h-4 text-gray-600" />
+              </button>
             </div>
           )}
 
-          <div className="flex items-end gap-2 max-w-6xl mx-auto">
-            <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-2xl flex-1 px-3 min-h-[48px]">
-              <button className="p-2 text-gray-500 hover:text-blue-500"><Smile className="w-6 h-6" /></button>
-              <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-500 hover:text-blue-500">
+          {/* Image Preview */}
+          {selectedImages.length > 0 && (
+            <div className="flex gap-2 mb-3 mx-2 overflow-x-auto pb-2">
+              {selectedImages.map((img, idx) => (
+                <div key={idx} className="relative flex-shrink-0">
+                  <img 
+                    src={URL.createObjectURL(img)} 
+                    alt={`Selected ${idx + 1}`}
+                    className="w-20 h-20 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                  <button
+                    onClick={() => removeImage(idx)}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700 shadow-md"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Input Area */}
+          <div className="flex items-end gap-3 max-w-6xl mx-auto">
+            <div className="flex items-center bg-gray-100 border-2 border-gray-200 rounded-2xl flex-1 px-2 min-h-[52px] focus-within:border-blue-500 transition-colors">
+              <button 
+                className="p-2.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                title="Emoji"
+              >
+                <Smile className="w-6 h-6" />
+              </button>
+              
+              <button 
+                onClick={() => fileInputRef.current?.click()} 
+                className="p-2.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                title="Attach files"
+              >
                 <Paperclip className="w-6 h-6" />
               </button>
+              
               <input 
                 type="file" 
                 ref={fileInputRef} 
                 className="hidden" 
                 multiple 
+                accept="image/*"
                 onChange={(e) => setSelectedImages([...e.target.files])} 
               />
               
@@ -277,7 +357,7 @@ export default function ChatRoomPage() {
                 onChange={handleInputChange}
                 rows={1}
                 placeholder="Type a message..."
-                className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-3 resize-none max-h-32 outline-none"
+                className="flex-1 bg-transparent border-none focus:ring-0 text-base py-3.5 px-2 resize-none max-h-32 outline-none text-gray-900 placeholder-gray-500 font-medium"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -289,68 +369,107 @@ export default function ChatRoomPage() {
 
             <button 
               onClick={onSend}
-              disabled={!input.trim() && selectedImages.length === 0}
-              className="w-12 h-12 flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-full transition-all shadow-md active:scale-90"
+              disabled={(!input.trim() && selectedImages.length === 0) || isSending}
+              className="w-14 h-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-full transition-all shadow-md active:scale-95 disabled:active:scale-100"
+              title="Send message"
             >
-              {isSending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send className="w-5 h-5 ml-1" />}
+              {isSending ? (
+                <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Send className="w-6 h-6" />
+              )}
             </button>
           </div>
+
+          {/* Typing Indicator */}
+          {isTyping && (
+            <div className="text-sm text-gray-600 mt-2 ml-2 font-medium">
+              Someone is typing...
+            </div>
+          )}
         </footer>
       </div>
     </div>
   );
 }
 
-// Sub-component for Message Bubbles
+// Enhanced Message Bubble Component
 function MessageItem({ msg, isMe, currentUser, onReply }) {
   if (msg.type === 'date') {
     return (
-      <div className="flex justify-center my-4">
-        <span className="bg-blue-100 dark:bg-gray-800 text-blue-700 dark:text-gray-400 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-          {new Date(msg.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+      <div className="flex justify-center my-6">
+        <span className="bg-gray-200 text-gray-700 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide shadow-sm">
+          {new Date(msg.date).toLocaleDateString(undefined, { 
+            weekday: 'long', 
+            month: 'long', 
+            day: 'numeric',
+            year: 'numeric'
+          })}
         </span>
       </div>
     );
   }
 
   return (
-    <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${msg.isContinuation ? 'mt-0.5' : 'mt-4'}`}>
-      <div className={`group relative max-w-[85%] md:max-w-[70%] flex gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${
+      msg.isContinuation ? 'mt-1' : 'mt-4'
+    }`}>
+      <div className={`group relative max-w-[85%] md:max-w-[65%] flex gap-2.5 ${
+        isMe ? 'flex-row-reverse' : 'flex-row'
+      }`}>
         
         {/* Avatar - Only show on first message of group */}
         {!isMe && !msg.isContinuation ? (
-          <div className="w-8 h-8 rounded-full bg-indigo-500 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
-            {msg.sender_name?.charAt(0) || 'U'}
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex-shrink-0 flex items-center justify-center text-white text-sm font-bold shadow-md border-2 border-blue-300">
+            {msg.sender_name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
-        ) : !isMe && <div className="w-8" />}
+        ) : !isMe && <div className="w-10" />}
 
-        <div className={`relative px-3 py-2 rounded-2xl shadow-sm text-sm ${
-          isMe 
-            ? 'bg-blue-600 text-white rounded-tr-none' 
-            : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none'
-        }`}>
+        <div className="flex flex-col gap-1">
+          {/* Sender Name (only for others' first message in group) */}
           {!isMe && !msg.isContinuation && (
-            <p className="text-[11px] font-bold text-indigo-500 mb-1 leading-none">{msg.sender_name || 'User'}</p>
+            <p className="text-xs font-bold text-gray-700 ml-3">
+              {msg.sender_name || 'User'}
+            </p>
           )}
           
-          {msg.content}
+          {/* Message Bubble */}
+          <div className={`relative px-4 py-2.5 rounded-2xl shadow-md text-base font-medium ${
+            isMe 
+              ? 'bg-blue-600 text-white rounded-tr-sm' 
+              : 'bg-white text-gray-900 rounded-tl-sm border-2 border-gray-200'
+          } ${msg.isContinuation ? '' : 'rounded-tl-2xl rounded-tr-2xl'}`}>
+            
+            <p className="break-words leading-relaxed">{msg.content}</p>
 
-          <div className="flex items-center justify-end gap-1 mt-1 opacity-70">
-            <span className="text-[10px]">
-              {new Date(msg.timestamp || msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-            {isMe && (
-              msg.is_read ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />
-            )}
+            {/* Timestamp and Read Status */}
+            <div className={`flex items-center justify-end gap-1.5 mt-1.5 ${
+              isMe ? 'opacity-80' : 'opacity-60'
+            }`}>
+              <span className="text-[11px] font-semibold">
+                {new Date(msg.timestamp || msg.created_at).toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </span>
+              {isMe && (
+                msg.is_read 
+                  ? <CheckCheck className="w-4 h-4" /> 
+                  : <Check className="w-4 h-4" />
+              )}
+            </div>
+
+            {/* Reply Button (Hover) */}
+            <button 
+              onClick={() => onReply(msg)}
+              className={`absolute top-1/2 -translate-y-1/2 ${
+                isMe ? '-left-10' : '-right-10'
+              } p-2 opacity-0 group-hover:opacity-100 transition-all bg-white border-2 border-gray-200 rounded-full shadow-md hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 text-gray-600`}
+              title="Reply"
+            >
+              <Reply className="w-4 h-4" />
+            </button>
           </div>
-
-          {/* Context Actions (Hover) */}
-          <button 
-            onClick={() => onReply(msg)}
-            className={`absolute top-0 ${isMe ? '-left-8' : '-right-8'} p-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-700 rounded-full shadow-sm hover:text-blue-500`}
-          >
-            <Reply className="w-3.5 h-3.5" />
-          </button>
         </div>
       </div>
     </div>

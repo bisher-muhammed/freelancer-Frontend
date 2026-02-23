@@ -10,8 +10,6 @@ const PostProjectPage = () => {
         description: '',
         category: '',
         skills_required: [],
-        assignment_type: 'single',
-        team_size: '',
         budget_type: 'fixed',
         fixed_budget: '',
         hourly_min_rate: '',
@@ -169,15 +167,6 @@ const PostProjectPage = () => {
             ...formData,
             [name]: value,
         };
-
-        // Clear team_size if switching to single freelancer
-        if (name === 'assignment_type' && value === 'single') {
-            updatedFormData.team_size = '';
-            // Clear team_size error if exists
-            if (errors.team_size) {
-                setErrors({ ...errors, team_size: '' });
-            }
-        }
 
         // Clear budget fields when switching budget type
         if (name === 'budget_type') {
@@ -385,17 +374,6 @@ const PostProjectPage = () => {
             newErrors.experience_level = 'Please select experience level';
         }
 
-        // Team validation matching backend serializer
-        if (formData.assignment_type === 'team') {
-            if (!formData.team_size) {
-                newErrors.team_size = 'Team size is required for team projects';
-            } else if (parseInt(formData.team_size) <= 0) {
-                newErrors.team_size = 'Team size must be greater than 0';
-            }
-        } else if (formData.assignment_type === 'single' && formData.team_size) {
-            newErrors.team_size = 'Single freelancer projects cannot have a team size';
-        }
-
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -424,12 +402,9 @@ const PostProjectPage = () => {
                 description: formData.description.trim(),
                 category: parseInt(formData.category),
                 skills_required: formData.skills_required,
-                assignment_type: formData.assignment_type,
                 budget_type: formData.budget_type,
                 experience_level: formData.experience_level,
                 duration: formData.duration,
-                // Team size should be null for single assignments as per backend validation
-                team_size: formData.assignment_type === 'team' ? parseInt(formData.team_size) : null,
                 // Only send budget data based on budget_type
                 fixed_budget: formData.budget_type === 'fixed' ? parseFloat(formData.fixed_budget) : null,
                 hourly_min_rate: formData.budget_type === 'hourly' ? parseFloat(formData.hourly_min_rate) : null,
@@ -438,7 +413,7 @@ const PostProjectPage = () => {
 
             console.log('Submitting project data:', submitData);
 
-            const response = await apiPrivate.post('/projects/', submitData);
+            const response = await apiPrivate.post('/client/my-projects/', submitData);
 
             if (response.status === 201) {
                 // Refresh subscription data to get updated remaining projects
@@ -529,7 +504,7 @@ const PostProjectPage = () => {
     };
 
     const handleBuySubscription = () => {
-        router.push('/subscriptions');
+        router.push('/client/subscriptions');
     };
 
     if (loading) {
@@ -960,75 +935,6 @@ const PostProjectPage = () => {
                         </div>
                     </div>
 
-                    {/* Assignment Type Section */}
-                    <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 lg:p-8 border border-blue-100">
-                        <div className="mb-4 md:mb-6">
-                            <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
-                                Assignment Type
-                            </h2>
-                            <p className="text-gray-700 text-sm md:text-base">
-                                Do you need a single freelancer or a team?
-                            </p>
-                        </div>
-
-                        <div className="space-y-4 md:space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <label className={`flex flex-col p-4 md:p-6 border-2 rounded-xl cursor-pointer transition-all duration-200 ${formData.assignment_type === 'single' ? 'border-blue-500 bg-blue-50' : 'border-blue-200 hover:border-blue-300'}`}>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <input
-                                            type="radio"
-                                            name="assignment_type"
-                                            value="single"
-                                            checked={formData.assignment_type === 'single'}
-                                            onChange={handleInputChange}
-                                            className="w-5 h-5 md:w-6 md:h-6 text-blue-600"
-                                        />
-                                        <span className="font-bold text-gray-900 text-base md:text-lg">Single Freelancer</span>
-                                    </div>
-                                    <span className="text-gray-600 text-sm md:text-base ml-8">One person for the entire project</span>
-                                </label>
-
-                                <label className={`flex flex-col p-4 md:p-6 border-2 rounded-xl cursor-pointer transition-all duration-200 ${formData.assignment_type === 'team' ? 'border-blue-500 bg-blue-50' : 'border-blue-200 hover:border-blue-300'}`}>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <input
-                                            type="radio"
-                                            name="assignment_type"
-                                            value="team"
-                                            checked={formData.assignment_type === 'team'}
-                                            onChange={handleInputChange}
-                                            className="w-5 h-5 md:w-6 md:h-6 text-blue-600"
-                                        />
-                                        <span className="font-bold text-gray-900 text-base md:text-lg">Team of Freelancers</span>
-                                    </div>
-                                    <span className="text-gray-600 text-sm md:text-base ml-8">Multiple people working together</span>
-                                </label>
-                            </div>
-
-                            {formData.assignment_type === 'team' && (
-                                <div className="mt-4">
-                                    <label className="block text-sm md:text-base font-semibold text-gray-800 mb-2">
-                                        Team Size *
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="team_size"
-                                        value={formData.team_size}
-                                        onChange={handleInputChange}
-                                        placeholder="e.g., 3"
-                                        min="1"
-                                        className="w-full md:w-1/2 lg:w-1/3 px-4 py-3 md:py-4 border-2 border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-300 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-500 transition-all duration-200"
-                                    />
-                                    {errors.team_size && <p className="text-red-600 text-sm md:text-base font-medium mt-2 px-2">{errors.team_size}</p>}
-                                </div>
-                            )}
-                            {formData.assignment_type === 'single' && formData.team_size && (
-                                <p className="text-red-600 text-sm md:text-base font-medium mt-2 px-2">
-                                    Single freelancer projects cannot have a team size
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
                     {/* Budget & Timeline Section */}
                     <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 lg:p-8 border border-blue-100">
                         <div className="mb-4 md:mb-6">
@@ -1226,7 +1132,7 @@ const PostProjectPage = () => {
                         <button
                             type="submit"
                             disabled={isSubmitting || !currentSubscription}
-                            className="flex-1 px-6 md:px-8 py-3 md:py-4 bg-linear-to-r from-black to-black text-white rounded-xl font-bold text-base md:text-lg hover:from-black hover:to-black active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                            className="flex-1 px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-black to-black text-white rounded-xl font-bold text-base md:text-lg hover:from-black hover:to-black active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                         >
                             {isSubmitting ? (
                                 <span className="flex items-center justify-center gap-2">

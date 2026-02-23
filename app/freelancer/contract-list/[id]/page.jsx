@@ -101,30 +101,22 @@ export default function FreelancerContractDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showMessageInput, setShowMessageInput] = useState(false);
-  
+
   // Document states
   const [documents, setDocuments] = useState([]);
   const [folders, setFolders] = useState([]);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [previewDocument, setPreviewDocument] = useState(null);
   const [selectedFolder, setSelectedFolder] = useState(null);
-  
+
   // Tracking Policy states
   const [showTrackingPolicy, setShowTrackingPolicy] = useState(false);
-  const [trackingPolicyStatus, setTrackingPolicyStatus] = useState({
-    accepted: false,
-    last_updated: null,
-    policy_version: null,
-    requires_acceptance: false
-  });
-  const [trackingPolicyChecked, setTrackingPolicyChecked] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchContract();
       fetchDocuments();
       fetchFolders();
-      checkTrackingPolicyStatus();
     }
   }, [id]);
 
@@ -132,7 +124,20 @@ export default function FreelancerContractDetailPage() {
     try {
       setLoading(true);
       const res = await fetchWithAuth(apiPrivate, `/contracts/${id}/`);
-      setContract(res.data);
+      const contractData = res.data;
+      setContract(contractData);
+
+      // Show modal when contract is active and freelancer has NOT yet accepted policy.
+      // Logic: tracking_required=false means not yet accepted, tracking_policy!=null means
+      // admin has created a policy that needs acceptance.
+      // After acceptance → backend sets tracking_required=true.
+      if (
+        contractData?.status === 'active' &&
+        contractData?.tracking_required === false &&
+        contractData?.tracking_policy !== null
+      ) {
+        setTimeout(() => setShowTrackingPolicy(true), 1500);
+      }
     } catch (err) {
       console.error('Error fetching contract:', err);
       setError(err.message || 'Failed to load contract details. Please try again.');
@@ -156,41 +161,6 @@ export default function FreelancerContractDetailPage() {
       setFolders(res.data);
     } catch (err) {
       console.error('Error fetching folders:', err);
-    }
-  };
-
-  const checkTrackingPolicyStatus = async () => {
-    try {
-      // Use contract data directly since it includes tracking policy info
-      if (contract?.tracking_required) {
-        // Check if policy_accepted exists in contract
-        const accepted = contract?.policy_accepted || false;
-        
-        setTrackingPolicyStatus({
-          accepted: accepted,
-          last_updated: null, // You might want to add this field to your API
-          policy_version: contract?.tracking_policy?.version || '1',
-          requires_acceptance: contract?.tracking_required
-        });
-      } else {
-        // No tracking required
-        setTrackingPolicyStatus({
-          accepted: true,
-          last_updated: null,
-          policy_version: null,
-          requires_acceptance: false
-        });
-      }
-    } catch (err) {
-      console.error('Error checking tracking policy:', err);
-      setTrackingPolicyStatus({
-        accepted: false,
-        last_updated: null,
-        policy_version: null,
-        requires_acceptance: false
-      });
-    } finally {
-      setTrackingPolicyChecked(true);
     }
   };
 
@@ -264,7 +234,7 @@ export default function FreelancerContractDetailPage() {
 
   const handleContractAction = async (action, endpoint, confirmationMessage, successCallback) => {
     if (!confirm(confirmationMessage)) return;
-    
+
     setActionLoading(true);
     try {
       await fetchWithAuth(apiPrivate, `/contracts/${id}/${endpoint}/`, {
@@ -282,15 +252,15 @@ export default function FreelancerContractDetailPage() {
   const handleActionWithInput = async (action, endpoint, promptMessage, confirmationMessage, successCallback) => {
     const input = prompt(promptMessage);
     if (!input) return;
-    
+
     if (!confirm(confirmationMessage)) return;
-    
+
     setActionLoading(true);
     try {
       await fetchWithAuth(apiPrivate, `/contracts/${id}/${endpoint}/`, {
         method: 'POST',
-        data: { 
-          [action === 'terminate' ? 'reason' : 'issue']: input 
+        data: {
+          [action === 'terminate' ? 'reason' : 'issue']: input
         }
       });
       fetchContract();
@@ -318,7 +288,7 @@ export default function FreelancerContractDetailPage() {
 
   const submitDeliverable = () => {
     // Check if tracking policy is required and accepted
-    if (contract?.tracking_required && !contract?.policy_accepted) {
+    if (!contract?.tracking_required && contract?.tracking_policy !== null) {
       if (!confirm('You need to accept the work tracking policy before submitting deliverables. Would you like to review the policy now?')) {
         return;
       }
@@ -328,24 +298,24 @@ export default function FreelancerContractDetailPage() {
 
     const description = prompt('Enter a brief description of your deliverable:');
     if (!description) return;
-    
+
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.pdf,.doc,.docx,.zip,.rar,.png,.jpg,.jpeg';
-    
+
     fileInput.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      
+
       if (!confirm('Submit this deliverable to the client?')) return;
-      
+
       setActionLoading(true);
       try {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('description', description);
         formData.append('type', 'deliverable');
-        
+
         await fetchWithAuth(apiPrivate, `/contracts/${id}/submit-deliverable/`, {
           method: 'POST',
           data: formData,
@@ -353,7 +323,7 @@ export default function FreelancerContractDetailPage() {
             'Content-Type': 'multipart/form-data',
           },
         });
-        
+
         alert('Deliverable submitted successfully!');
         fetchContract();
       } catch (err) {
@@ -362,52 +332,23 @@ export default function FreelancerContractDetailPage() {
         setActionLoading(false);
       }
     };
-    
+
     fileInput.click();
   };
 
+  // ✅ FIX: Update local contract state so UI reacts immediately without full refetch
   const handleTrackingPolicyAccepted = async () => {
     try {
-      await fetchWithAuth(apiPrivate, '/tracker/policy/accept/', {
-        method: 'POST',
-        data: {
-          contract_id: id,
-          accepted: true
-        }
-      });
-      
-      setTrackingPolicyStatus(prev => ({
-        ...prev,
-        accepted: true,
-        last_updated: new Date().toISOString()
-      }));
+      setContract(prev => ({ ...prev, tracking_required: true })); // backend sets this on accept
       alert('Tracking policy accepted successfully! You can now use work tracking features.');
     } catch (err) {
-      console.error('Error accepting tracking policy:', err);
-      alert('Failed to accept tracking policy. Please try again.');
+      console.error('Error updating tracking policy state:', err);
     }
   };
 
-  const handleTrackingPolicyRejected = async () => {
-    try {
-      await fetchWithAuth(apiPrivate, '/tracker/policy/accept/', {
-        method: 'POST',
-        data: {
-          contract_id: id,
-          accepted: false
-        }
-      });
-      
-      setTrackingPolicyStatus(prev => ({
-        ...prev,
-        accepted: false,
-        last_updated: new Date().toISOString()
-      }));
-      alert('Tracking policy rejected. Some features like time tracking and deliverable submission may be limited.');
-    } catch (err) {
-      console.error('Error rejecting tracking policy:', err);
-      alert('Failed to reject tracking policy. Please try again.');
-    }
+  // ✅ FIX: The modal itself already calls the API; this just handles local state after rejection
+  const handleTrackingPolicyRejected = () => {
+    alert('Tracking policy rejected. Some features like time tracking and deliverable submission may be limited.');
   };
 
   const downloadContract = () => {
@@ -478,27 +419,25 @@ export default function FreelancerContractDetailPage() {
         freelancerEarnings: 0
       };
     }
-    
-    // For hourly contracts, show the hourly rate instead of total
+
     const hourlyRate = parseFloat(contract.offer?.agreed_hourly_rate) || 0;
     const platformFeePercentage = parseFloat(contract.platform_fee_percentage) || 0;
-    
-    // Calculate freelancer's hourly rate after fees
+
     const platformFeePerHour = (platformFeePercentage / 100) * hourlyRate;
     const freelancerRatePerHour = hourlyRate - platformFeePerHour;
-    
+
     return {
-      contractAmount: hourlyRate, // Hourly rate
-      platformFee: platformFeePerHour, // Platform fee per hour
-      freelancerEarnings: freelancerRatePerHour, // Freelancer's rate per hour after fees
+      contractAmount: hourlyRate,
+      platformFee: platformFeePerHour,
+      freelancerEarnings: freelancerRatePerHour,
       isHourly: contract.rate_type === 'hourly',
-      estimatedHours: contract.offer?.estimated_hours // Show estimated hours if available
+      estimatedHours: contract.offer?.estimated_hours
     };
   };
 
   const getContractDuration = () => {
     if (!contract?.started_at) return '0 days';
-    
+
     try {
       const start = new Date(contract.started_at);
       const end = contract.ended_at ? new Date(contract.ended_at) : new Date();
@@ -513,12 +452,12 @@ export default function FreelancerContractDetailPage() {
   const getQuickStats = () => {
     const amounts = calculateContractAmounts();
     const duration = getContractDuration();
-    
+
     return [
       {
         title: 'Your Rate',
         value: amounts.isHourly ? `₹${amounts.freelancerEarnings.toFixed(2)}/hr` : `₹${amounts.freelancerEarnings.toFixed(2)}`,
-        subtitle: amounts.isHourly 
+        subtitle: amounts.isHourly
           ? `After ${contract?.platform_fee_percentage || 0}% platform fee`
           : 'Fixed price project',
         icon: DollarSign,
@@ -562,9 +501,9 @@ export default function FreelancerContractDetailPage() {
 
   const getTimelineEvents = () => {
     if (!contract) return [];
-    
+
     const events = [];
-    
+
     if (contract.created_at) {
       events.push({
         title: 'Contract Created',
@@ -575,7 +514,7 @@ export default function FreelancerContractDetailPage() {
         bgColor: 'bg-gray-100'
       });
     }
-    
+
     if (contract.accepted_at) {
       events.push({
         title: 'Contract Accepted',
@@ -586,7 +525,7 @@ export default function FreelancerContractDetailPage() {
         bgColor: 'bg-green-100'
       });
     }
-    
+
     if (contract.started_at) {
       events.push({
         title: 'Contract Started',
@@ -597,7 +536,7 @@ export default function FreelancerContractDetailPage() {
         bgColor: 'bg-blue-100'
       });
     }
-    
+
     if (contract.completed_at) {
       events.push({
         title: 'Contract Completed',
@@ -608,7 +547,7 @@ export default function FreelancerContractDetailPage() {
         bgColor: 'bg-purple-100'
       });
     }
-    
+
     if (contract.terminated_at) {
       events.push({
         title: 'Contract Terminated',
@@ -619,7 +558,7 @@ export default function FreelancerContractDetailPage() {
         bgColor: 'bg-red-100'
       });
     }
-    
+
     events.push({
       title: 'Current Status',
       date: contract.updated_at,
@@ -628,19 +567,19 @@ export default function FreelancerContractDetailPage() {
       iconColor: 'text-gray-600',
       bgColor: 'bg-gray-100'
     });
-    
+
     return events;
   };
 
   const getActionButtons = () => {
     if (!contract) return [];
-    
+
     const actions = [];
-    
+
     switch (contract.status) {
       case 'active':
         // Add tracking policy button if not accepted
-        if (contract?.tracking_required && !contract?.policy_accepted) {
+        if (!contract?.tracking_required && contract?.tracking_policy !== null) {
           actions.push({
             label: 'Review Tracking Policy',
             onClick: () => setShowTrackingPolicy(true),
@@ -649,14 +588,14 @@ export default function FreelancerContractDetailPage() {
             disabled: actionLoading
           });
         }
-        
+
         actions.push(
           {
             label: 'Submit Deliverable',
             onClick: submitDeliverable,
             icon: Upload,
             color: 'bg-indigo-600 hover:bg-indigo-700',
-            disabled: actionLoading || (contract?.tracking_required && !contract?.policy_accepted)
+            disabled: actionLoading || (!contract?.tracking_required && contract?.tracking_policy !== null)
           },
           {
             label: 'Request Payment',
@@ -674,7 +613,7 @@ export default function FreelancerContractDetailPage() {
           }
         );
         break;
-        
+
       case 'completed':
         actions.push({
           label: 'Request Review',
@@ -684,7 +623,7 @@ export default function FreelancerContractDetailPage() {
           fullWidth: true
         });
         break;
-        
+
       case 'disputed':
         actions.push({
           label: 'Contact Support',
@@ -694,7 +633,7 @@ export default function FreelancerContractDetailPage() {
           fullWidth: true
         });
         break;
-        
+
       case 'pending':
         actions.push(
           {
@@ -717,23 +656,9 @@ export default function FreelancerContractDetailPage() {
         );
         break;
     }
-    
+
     return actions;
   };
-
-  // Only show tracking policy modal automatically if tracking is required AND not accepted
-  useEffect(() => {
-    if (contract?.status === 'active' && 
-        contract?.tracking_required && 
-        !contract?.policy_accepted && 
-        trackingPolicyChecked) {
-      // Show after a short delay
-      const timer = setTimeout(() => {
-        setShowTrackingPolicy(true);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [contract?.status, contract?.tracking_required, contract?.policy_accepted, trackingPolicyChecked]);
 
   if (loading) {
     return (
@@ -834,14 +759,14 @@ export default function FreelancerContractDetailPage() {
                 {statusConfig.icon}
                 <span className="font-medium">{statusConfig.label}</span>
               </span>
-              <button 
+              <button
                 onClick={downloadContract}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Download Contract"
               >
                 <Download className="w-5 h-5 text-gray-600" />
               </button>
-              <button 
+              <button
                 onClick={() => setShowMessageInput(!showMessageInput)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Send Message"
@@ -854,44 +779,44 @@ export default function FreelancerContractDetailPage() {
       </div>
 
       <div className="max-w-6xl mx-auto p-4 md:p-6">
-        {/* Only show tracking policy banner if tracking is required AND not yet accepted */}
-        {contract.status === 'active' && 
-         contract.tracking_required && 
-         !contract.policy_accepted && (
-          <div className="mb-4 p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-yellow-50 text-yellow-800 border border-yellow-200">
-            <div className="flex items-start gap-3 flex-1">
-              <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0" />
-              <div>
-                <p className="font-semibold">⚠ Work Tracking Policy Required</p>
-                <p className="text-sm mt-1">
-                  You need to accept the work tracking policy to enable time tracking and deliverable submission features.
+        {/* Tracking policy NOT accepted — warning banner */}
+        {contract.status === 'active' &&
+          !contract.tracking_required &&
+          contract.tracking_policy !== null && (
+            <div className="mb-4 p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-yellow-50 text-yellow-800 border border-yellow-200">
+              <div className="flex items-start gap-3 flex-1">
+                <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold">⚠ Work Tracking Policy Required</p>
+                  <p className="text-sm mt-1">
+                    You need to accept the work tracking policy to enable time tracking and deliverable submission features.
+                    {contract.tracking_policy?.version && ` (Version ${contract.tracking_policy.version})`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTrackingPolicy(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Review &amp; Accept Policy
+              </button>
+            </div>
+          )}
+
+        {/* Tracking policy accepted — success banner */}
+        {contract.status === 'active' &&
+          contract.tracking_required === true && (
+            <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-800 border border-green-200">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium">
+                  ✓ Work Tracking Policy Accepted
                   {contract.tracking_policy?.version && ` (Version ${contract.tracking_policy.version})`}
-                </p>
+                </span>
               </div>
             </div>
-            <button
-              onClick={() => setShowTrackingPolicy(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              Review & Accept Policy
-            </button>
-          </div>
-        )}
-
-        {/* Show accepted status briefly if just accepted */}
-        {contract.status === 'active' && 
-         contract.tracking_required && 
-         contract.policy_accepted && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-800 border border-green-200">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-sm font-medium">
-                ✓ Work Tracking Policy Accepted {contract.tracking_policy?.version && `(Version ${contract.tracking_policy.version})`}
-              </span>
-            </div>
-          </div>
-        )}
+          )}
 
         {/* Message Input */}
         {showMessageInput && (
@@ -1091,9 +1016,7 @@ export default function FreelancerContractDetailPage() {
                           <Clock3 className="w-5 h-5 text-gray-500" />
                           <div>
                             <p className="font-medium">Estimated Hours</p>
-                            <p className="text-sm text-gray-500">
-                              Initial time estimate
-                            </p>
+                            <p className="text-sm text-gray-500">Initial time estimate</p>
                           </div>
                         </div>
                         <p className="text-lg font-semibold">{amounts.estimatedHours} hours</p>
@@ -1106,9 +1029,7 @@ export default function FreelancerContractDetailPage() {
                           <CreditCard className="w-5 h-5 text-gray-500" />
                           <div>
                             <p className="font-medium">Total Budget</p>
-                            <p className="text-sm text-gray-500">
-                              Based on estimated hours
-                            </p>
+                            <p className="text-sm text-gray-500">Based on estimated hours</p>
                           </div>
                         </div>
                         <p className="text-lg font-semibold">₹{parseFloat(contract.offer.total_budget).toFixed(2)}</p>
@@ -1139,7 +1060,7 @@ export default function FreelancerContractDetailPage() {
                             {amounts.isHourly ? 'Your Net Hourly Rate' : 'Your Net Earnings'}
                           </p>
                           <p className="text-sm text-green-600">
-                            {amounts.isHourly ? 'Amount you\'ll earn per hour' : 'Amount you\'ll receive'}
+                            {amounts.isHourly ? "Amount you'll earn per hour" : "Amount you'll receive"}
                           </p>
                         </div>
                       </div>
@@ -1204,9 +1125,7 @@ export default function FreelancerContractDetailPage() {
                           <div>
                             <p className="font-semibold text-gray-900">{event.title}</p>
                             <p className="text-sm text-gray-600">{formatDate(event.date)}</p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              {event.description}
-                            </p>
+                            <p className="text-sm text-gray-500 mt-1">{event.description}</p>
                           </div>
                         </div>
                       ))}
@@ -1230,14 +1149,14 @@ export default function FreelancerContractDetailPage() {
                       Upload Document
                     </button>
                   </div>
-                  
+
                   <FolderManager
                     folders={folders}
                     documents={documents}
                     onCreateFolder={handleCreateFolder}
                     onFolderClick={handleFolderClick}
                   />
-                  
+
                   <DocumentList
                     documents={documents}
                     folders={folders}
@@ -1285,7 +1204,7 @@ export default function FreelancerContractDetailPage() {
               </div>
             )}
           </div>
-          
+
           <p className="text-sm text-gray-500 mt-4 text-center">
             Need assistance?{' '}
             <a href="/freelancer/support" className="text-indigo-600 hover:text-indigo-700 font-medium">
@@ -1299,9 +1218,9 @@ export default function FreelancerContractDetailPage() {
           <div className="flex items-start gap-4">
             <ShieldCheck className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
             <div>
-              <h4 className="font-semibold text-blue-800 mb-2">FreelancerHub Protection & Benefits</h4>
+              <h4 className="font-semibold text-blue-800 mb-2">FreelancerHub Protection &amp; Benefits</h4>
               <p className="text-sm text-blue-700">
-                As a freelancer, you're protected by FreelancerHub's secure payment system, dispute resolution process, 
+                As a freelancer, you're protected by FreelancerHub's secure payment system, dispute resolution process,
                 and guaranteed payments. All contracts include milestone tracking and payment protection.
               </p>
               <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-blue-600">
@@ -1350,7 +1269,7 @@ export default function FreelancerContractDetailPage() {
         />
       )}
 
-      {/* Tracking Policy Modal */}
+      {/* ✅ Tracking Policy Modal */}
       {showTrackingPolicy && (
         <TrackingPolicyModal
           contractId={id}

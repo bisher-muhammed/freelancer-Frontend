@@ -11,16 +11,10 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
-  Download,
   Image as ImageIcon,
   Clock,
   Receipt,
-  Layers,
-  ChevronLeft,
-  ChevronRight,
-  X,
   BarChart3,
-  FileText,
   UserCircle,
   Activity,
   Wallet,
@@ -28,26 +22,9 @@ import {
   DollarSign,
   CreditCard,
   Flag,
-  MessageSquare,
   AlertTriangle,
   Loader2,
-  Edit,
-  ChevronDown,
-  Calendar,
-  TrendingUp,
-  Percent,
-  Battery,
-  PlayCircle,
-  StopCircle,
-  PauseCircle,
-  Monitor,
-  Globe,
-  Cpu,
-  Database,
-  ArrowUpRight,
-  Smartphone,
-  Laptop,
-  ExternalLink
+  X
 } from "lucide-react";
 import SessionDetails from "@/components/admin/SessionDetails";
 import BillingDetails from "@/components/admin/BillingDetails";
@@ -83,8 +60,8 @@ export default function AdminBillingDetailPage() {
       setLoading(true);
       setError(null);
       
-      // Fetch billing data
-      const billingRes = await apiPrivate.get(`/billing/admin/billing-units/${id}/`);
+      // Fetch billing data using the correct endpoint from urls.py
+      const billingRes = await apiPrivate.get(`billing/admin/billing-units/${id}/`);
       const billing = billingRes.data;
       console.log("Fetched billing data:", billing);
       setBillingData(billing);
@@ -149,32 +126,24 @@ export default function AdminBillingDetailPage() {
         }
       }
       
-      // Get freelancer info from billing data
+      // Set freelancer info from billing data directly
       if (billing.freelancer) {
-        try {
-          const freelancerRes = await apiPrivate.get(`/admin/freelancers/${billing.freelancer}/`);
-          setFreelancerInfo(freelancerRes.data);
-        } catch (err) {
-          console.warn("Could not fetch freelancer details:", err);
-          setFreelancerInfo({
-            id: billing.freelancer,
-            name: billing.freelancer_name || `User ${billing.freelancer}`,
-            email: billing.freelancer_email || null,
-            payment_method: null
-          });
-        }
+        setFreelancerInfo({
+          id: billing.freelancer,
+          name: billing.freelancer_name || `User ${billing.freelancer}`,
+          email: billing.freelancer_email || null,
+          payment_method: billing.payment_method || null
+        });
       }
-      
-      // Get all billing units for this freelancer
       if (billing.freelancer) {
         try {
-          const allBillingRes = await apiPrivate.get(`/billing/admin/billing-units/`, {
+          const allBillingRes = await apiPrivate.get(`admin/billing-units/`, {
             params: { 
               freelancer_id: billing.freelancer,
               status: 'approved' 
             }
           });
-          const allUnits = allBillingRes.data || [];
+          const allUnits = allBillingRes.data.results || allBillingRes.data || [];
           const freelancerUnits = allUnits.filter(unit => unit.freelancer === billing.freelancer);
           setBillingUnits(freelancerUnits.length > 0 ? freelancerUnits : [billing]);
         } catch (billingErr) {
@@ -203,7 +172,8 @@ export default function AdminBillingDetailPage() {
     try {
       setProcessingAction(`${action}-${billingId}`);
       
-      await apiPrivate.post(`/billing/admin/billing-units/${billingId}/review/`, { action });
+      // Use the correct review endpoint from urls.py
+      await apiPrivate.post(`admin/billing-units/${billingId}/review/`, { action });
       await fetchData();
       
       alert(`Billing unit ${action}d successfully!`);
@@ -325,7 +295,6 @@ export default function AdminBillingDetailPage() {
     return (seconds / 3600).toFixed(2);
   };
 
-  // Update the calculateEfficiency function:
   const calculateEfficiency = () => {
     const tracked = billingData?.tracked_seconds || billingData?.total_tracked_seconds || 0;
     const billable = billingData?.billable_seconds || 0;

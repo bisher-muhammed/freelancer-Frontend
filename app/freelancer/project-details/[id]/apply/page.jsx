@@ -322,7 +322,7 @@ export default function ProposalPage() {
                 rows={8}
                 value={form.cover_letter}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg p-4 focus:ring-2 focus:ring-black focus:border-transparent transition-all"
+                className="w-full border border-gray-300 rounded-lg p-4 focus:ring-2 focus:ring-black focus:border-transparent transition-all text-black"
                 placeholder="Explain why you're the best fit for this project. Include relevant experience, your approach, and any questions you have..."
                 required
                 disabled={alreadyApplied || submitting}
@@ -349,13 +349,13 @@ export default function ProposalPage() {
                     Your Bid Amount ($) <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black">$</span>
                     <input
                       type="number"
                       name="bid_fixed_price"
                       value={form.bid_fixed_price}
                       onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg p-4 pl-8 focus:ring-2 focus:ring-black focus:border-transparent transition-all"
+                      className="w-full border border-gray-300 rounded-lg p-4 pl-8 focus:ring-2 focus:ring-black focus:border-transparent transition-all text-black"
                       placeholder="Enter your total bid"
                       min="1"
                       step="0.01"

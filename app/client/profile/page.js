@@ -26,11 +26,20 @@ export default function ClientProfilePage() {
   const [validationError, setValidationError] = useState('');
   const [imageLoading, setImageLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   // Fetch profile on mount
   useEffect(() => {
     dispatch(fetchClientProfile());
   }, [dispatch]);
+
+  // Refetch profile after successful update
+  useEffect(() => {
+    if (submitSuccess) {
+      dispatch(fetchClientProfile());
+      setSubmitSuccess(false);
+    }
+  }, [submitSuccess, dispatch]);
 
   // Sync state with API data
   useEffect(() => {
@@ -101,7 +110,7 @@ export default function ClientProfilePage() {
     setPreview(profile?.profile_picture || null);
   };
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault();
     const validationMsg = validateForm();
     if (validationMsg) {
@@ -113,20 +122,38 @@ export default function ClientProfilePage() {
     const form = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
       if (value !== null && value !== undefined && value !== '') {
-        form.append(key, value);
+        // Only append if it's a file or if it's a field that has changed
+        if (key === 'profile_picture' || (profile && value !== profile[key])) {
+          form.append(key, value);
+        } else if (!profile) {
+          // For new profile, append all fields
+          form.append(key, value);
+        }
       }
     });
 
-    if (profile) {
-      dispatch(updateClientProfile(form));
-    } else {
-      dispatch(createClientProfile(form));
+    try {
+      if (profile) {
+        await dispatch(updateClientProfile(form)).unwrap();
+      } else {
+        await dispatch(createClientProfile(form)).unwrap();
+      }
+      
+      // Trigger refetch after successful update
+      setSubmitSuccess(true);
+      
+      // Exit edit mode
+      setIsEditing(false);
+      
+    } catch (error) {
+      console.error('Submission error:', error);
     }
   };
 
   const handleEditToggle = () => {
     setIsEditing(!isEditing);
     if (!isEditing && profile) {
+      // Reset form to current profile data when entering edit mode
       setFormData({
         company_name: profile.company_name || '',
         contact_number: profile.contact_number || '',
@@ -141,6 +168,7 @@ export default function ClientProfilePage() {
 
   const handleCancel = () => {
     if (profile) {
+      // Reset form to original profile data
       setFormData({
         company_name: profile.company_name || '',
         contact_number: profile.contact_number || '',
@@ -173,7 +201,9 @@ export default function ClientProfilePage() {
           {profile ? 'My Profile' : 'Create Profile'}
         </h1>
         <p className="text-gray-600 mt-1 text-sm lg:text-base">
-          {profile ? 'Manage your company information and profile settings' : 'Set up your company profile to get started'}
+          {profile 
+            ? (isEditing ? 'Edit your company information and profile settings' : 'Manage your company information and profile settings')
+            : 'Set up your company profile to get started'}
         </p>
       </div>
 
@@ -252,7 +282,13 @@ export default function ClientProfilePage() {
               <h2 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">
                 {profile?.username || user?.username || 'Username'}
               </h2>
-              <p className="text-gray-600 text-xs lg:text-sm mb-2">{profile?.company_name || 'Company Name'}</p>
+              <p className="text-gray-600 text-xs lg:text-sm mb-2">
+                {isEditing ? (
+                  <span className="italic text-gray-400">Edit mode</span>
+                ) : (
+                  profile?.company_name || 'Company Name'
+                )}
+              </p>
               {profile?.email && (
                 <div className="flex items-center justify-center text-xs lg:text-sm text-gray-500 mt-2">
                   <Mail className="h-3 w-3 mr-1" />
@@ -340,6 +376,21 @@ export default function ClientProfilePage() {
               </div>
             )}
 
+            {/* Edit Mode Header */}
+            {isEditing && profile && (
+              <div className="mb-4 lg:mb-6 pb-4 lg:pb-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg lg:text-xl font-bold text-gray-900">Edit Profile Information</h2>
+                  <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                    Edit Mode
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  Make changes to your profile information below
+                </p>
+              </div>
+            )}
+
             {validationError && (
               <div className="mb-4 lg:mb-6 bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 lg:p-4 rounded-lg text-sm">
                 {validationError}
@@ -360,10 +411,17 @@ export default function ClientProfilePage() {
                     value={formData.company_name}
                     onChange={handleChange}
                     placeholder="Enter your company name"
-                    className="w-full pl-10 lg:pl-12 pr-4 py-2 lg:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm lg:text-base"
+                    className={`w-full pl-10 lg:pl-12 pr-4 py-2 lg:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm lg:text-base ${
+                      !isEditing && profile 
+                        ? 'bg-gray-50 text-gray-500 border-gray-200 cursor-not-allowed' 
+                        : 'border-gray-300'
+                    }`}
                     disabled={!isEditing && !!profile}
                   />
                 </div>
+                {!isEditing && profile && (
+                  <p className="mt-1 text-xs text-gray-500">Click Edit Profile to change</p>
+                )}
               </div>
 
               {/* Contact Number */}
@@ -379,7 +437,11 @@ export default function ClientProfilePage() {
                     value={formData.contact_number}
                     onChange={handleChange}
                     placeholder="+911234567890"
-                    className="w-full pl-10 lg:pl-12 pr-4 py-2 lg:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm lg:text-base"
+                    className={`w-full pl-10 lg:pl-12 pr-4 py-2 lg:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm lg:text-base ${
+                      !isEditing && profile 
+                        ? 'bg-gray-50 text-gray-500 border-gray-200 cursor-not-allowed' 
+                        : 'border-gray-300'
+                    }`}
                     disabled={!isEditing && !!profile}
                   />
                 </div>
@@ -399,7 +461,11 @@ export default function ClientProfilePage() {
                       value={formData.country}
                       onChange={handleChange}
                       placeholder="Country"
-                      className="w-full pl-10 lg:pl-12 pr-4 py-2 lg:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm lg:text-base"
+                      className={`w-full pl-10 lg:pl-12 pr-4 py-2 lg:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm lg:text-base ${
+                        !isEditing && profile 
+                          ? 'bg-gray-50 text-gray-500 border-gray-200 cursor-not-allowed' 
+                          : 'border-gray-300'
+                      }`}
                       disabled={!isEditing && !!profile}
                     />
                   </div>
@@ -414,7 +480,11 @@ export default function ClientProfilePage() {
                     value={formData.city}
                     onChange={handleChange}
                     placeholder="City"
-                    className="w-full px-4 py-2 lg:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 text-sm lg:text-base"
+                    className={`w-full px-4 py-2 lg:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm lg:text-base ${
+                      !isEditing && profile 
+                        ? 'bg-gray-50 text-gray-500 border-gray-200 cursor-not-allowed' 
+                        : 'border-gray-300'
+                    }`}
                     disabled={!isEditing && !!profile}
                   />
                 </div>
@@ -431,7 +501,11 @@ export default function ClientProfilePage() {
                   onChange={handleChange}
                   rows={4}
                   placeholder="Tell us about your company..."
-                  className="w-full px-4 py-2 lg:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:text-gray-500 text-sm lg:text-base"
+                  className={`w-full px-4 py-2 lg:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-black text-sm lg:text-base ${
+                    !isEditing && profile 
+                      ? 'bg-gray-50 text-gray-500 border-gray-200 cursor-not-allowed' 
+                      : 'border-gray-300'
+                  }`}
                   maxLength={500}
                   disabled={!isEditing && !!profile}
                 />

@@ -100,9 +100,16 @@ export default function ZegoMeeting({ meetingId, onMeetingEnd, userId }) {
     const localStream = await zg.createStream({
       camera: {
         audio: true,
-        video: { width: 1280, height: 720, frameRate: 30 },
+        video: true,
+        videoQuality: 4,
+
+        width: 1280,
+        height: 720,
+        frameRate: 30,
+        bitrate: 1500,
       },
     });
+
 
     localStreamRef.current = localStream;
 

@@ -52,8 +52,8 @@ export default function AdminSidebar({ onClose }) {
     },
     {
       icon: CreditCard,
-      label: "Payments",
-      href: "/admin/payments",
+      label: "Ledger",
+      href: "/admin/ledger-entry",
     },
     {
       icon: BarChart3,
@@ -70,7 +70,7 @@ export default function AdminSidebar({ onClose }) {
     {
       icon: Flag,
       label: "Disputes",
-      href: "/admin/disputes",
+      href: "/admin/termination-requests",
       badge: 3,
     },
     

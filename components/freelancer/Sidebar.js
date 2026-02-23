@@ -97,6 +97,14 @@ export default function FreelancerSidebar({ onClose }) {
       badge: 12,
       description: "Client communications",
     },
+
+    {
+      icon: MessageSquare,
+      label: "Messages",
+      href: "/freelancer/chat",
+      badge: 12,
+      description: "communications",
+    },
     
     {
       icon: Calendar,

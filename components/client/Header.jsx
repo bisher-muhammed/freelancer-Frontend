@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, User, Menu } from "lucide-react";
+import { User, Menu } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../app/store/slices/userSlice";
 import { persistor } from "@/app/store/store";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import NotificationBell from "@/components/NotificationBell"; // Update path if needed
 
 export default function ClientHeader({ onMenuClick }) {
-  const [notifications] = useState(1);
   const [scrolled, setScrolled] = useState(false);
   const dispatch = useDispatch();
   const router = useRouter();
@@ -67,13 +67,8 @@ export default function ClientHeader({ onMenuClick }) {
 
         {/* Right: Notifications and User */}
         <div className="flex items-center space-x-2 sm:space-x-4">
-          {/* Notifications */}
-          <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <Bell className="h-5 w-5 text-gray-600" />
-            {notifications > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            )}
-          </button>
+          {/* Notification Bell Component */}
+          <NotificationBell />
 
           {/* User Profile - Hidden on mobile, visible on sm and up */}
           <div className="hidden sm:flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors group relative">

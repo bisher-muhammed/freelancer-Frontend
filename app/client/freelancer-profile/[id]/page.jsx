@@ -12,7 +12,8 @@ import {
   AlertCircle, Database, Layout,
   Figma, MapPin, MessageSquare,
   Check, Award as Trophy,
-  TrendingUp, Video
+  TrendingUp, Video, Calendar as CalendarIcon,
+  Clock, BookOpen, Link as LinkIcon, ExternalLink
 } from 'lucide-react';
 import MeetingModal from "@/components/client/SheduleMeeting";
 
@@ -47,6 +48,25 @@ export default function FreelancerProfilePage() {
     return `http://localhost:8000/media/${path}`;
   };
 
+  // Helper function to get categories from skill
+  const getSkillCategories = (skill) => {
+    if (!skill) return [];
+    
+    if (skill.categories && Array.isArray(skill.categories)) {
+      return skill.categories.map(cat => cat.name);
+    }
+    
+    return [];
+  };
+
+  // Helper function to format categories for display
+  const formatCategories = (categories) => {
+    if (!categories || categories.length === 0) return 'General';
+    if (categories.length === 1) return categories[0];
+    if (categories.length === 2) return categories.join(' & ');
+    return `${categories[0]} +${categories.length - 1}`;
+  };
+
   useEffect(() => {
     if (!userId) {
       router.push('/client/dashboard');
@@ -68,7 +88,7 @@ export default function FreelancerProfilePage() {
         setError("Failed to load freelancer profile. Please try again.");
       })
       .finally(() => setLoading(false));
-  }, [userId, router]);
+  }, [userId, router, proposalId]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -110,6 +130,8 @@ export default function FreelancerProfilePage() {
       'TypeScript': Code,
       'Vue': Layout,
       'Angular': Layout,
+      'PostgreSQL': Database,
+      'javascript': Code,
     };
     
     return skillIcons[skillName] || Code;
@@ -159,6 +181,23 @@ export default function FreelancerProfilePage() {
   const getStats = () => {
     if (!freelancer) return [];
     
+    // Calculate years of experience from experience array if available
+    let yearsExp = "N/A";
+    if (freelancer.experience && freelancer.experience.length > 0) {
+      // Sort by start date and calculate total years
+      const totalMonths = freelancer.experience.reduce((total, exp) => {
+        if (exp.start_date) {
+          const start = new Date(exp.start_date);
+          const end = exp.end_date ? new Date(exp.end_date) : new Date();
+          const months = (end - start) / (1000 * 60 * 60 * 24 * 30);
+          return total + months;
+        }
+        return total;
+      }, 0);
+      const years = Math.round(totalMonths / 12 * 10) / 10;
+      yearsExp = years > 0 ? `${years}+ years` : "1+ years";
+    }
+    
     return [
       {
         label: "Hourly Rate",
@@ -168,42 +207,42 @@ export default function FreelancerProfilePage() {
         bgColor: "bg-green-50"
       },
       {
-        label: "Success Rate",
-        value: "95%",
-        icon: TrendingUp,
-        color: "text-blue-600",
-        bgColor: "bg-blue-50"
-      },
-      {
-        label: "Projects",
-        value: freelancer.completed_projects || "12+",
-        icon: Briefcase,
-        color: "text-purple-600",
-        bgColor: "bg-purple-50"
-      },
-      {
-        label: "Experience",
-        value: freelancer.years_experience || "3+ years",
-        icon: Award,
+        label: "Rating",
+        value: freelancer.average_rating ? parseFloat(freelancer.average_rating).toFixed(1) : "0.0",
+        icon: Star,
         color: "text-yellow-600",
         bgColor: "bg-yellow-50"
       },
       {
-        label: "Availability",
-        value: freelancer.availability || "Full-time",
-        icon: CheckCircle,
-        color: "text-green-600",
-        bgColor: "bg-green-50"
+        label: "Reviews",
+        value: freelancer.total_reviews || 0,
+        icon: MessageSquare,
+        color: "text-blue-600",
+        bgColor: "bg-blue-50"
+      },
+      {
+        label: "Experience",
+        value: yearsExp,
+        icon: Award,
+        color: "text-purple-600",
+        bgColor: "bg-purple-50"
+      },
+      {
+        label: "Skills",
+        value: freelancer.skills_read?.length || 0,
+        icon: Code,
+        color: "text-indigo-600",
+        bgColor: "bg-indigo-50"
       }
     ];
   };
 
   const tabs = [
     { id: "overview", label: "Overview", icon: User },
-    { id: "skills", label: "Skills", icon: Code },
-    { id: "experience", label: "Experience", icon: Building },
-    { id: "education", label: "Education", icon: GraduationCap },
-    { id: "portfolio", label: "Portfolio", icon: Trophy },
+    { id: "skills", label: `Skills (${freelancer?.skills_read?.length || 0})`, icon: Code },
+    { id: "experience", label: `Experience (${freelancer?.experience?.length || 0})`, icon: Building },
+    { id: "education", label: `Education (${freelancer?.education?.length || 0})`, icon: GraduationCap },
+    { id: "portfolio", label: `Portfolio (${freelancer?.portfolio?.length || 0})`, icon: Trophy },
   ];
 
   // Render loading state
@@ -347,14 +386,14 @@ export default function FreelancerProfilePage() {
                   </div>
                   
                   {/* Rating */}
-                  {freelancer.rating && (
+                  {freelancer.average_rating && parseFloat(freelancer.average_rating) > 0 && (
                     <div className="flex items-center gap-2 mb-4">
                       <div className="flex">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
                             className={`h-5 w-5 ${
-                              i < Math.floor(freelancer.rating) 
+                              i < Math.floor(parseFloat(freelancer.average_rating)) 
                                 ? 'text-yellow-400 fill-yellow-400' 
                                 : 'text-gray-300'
                             }`}
@@ -362,11 +401,11 @@ export default function FreelancerProfilePage() {
                         ))}
                       </div>
                       <span className="text-gray-600 font-medium">
-                        {freelancer.rating.toFixed(1)}
+                        {parseFloat(freelancer.average_rating).toFixed(1)}
                       </span>
                       <span className="text-gray-400">•</span>
                       <span className="text-gray-600">
-                        {freelancer.review_count || 0} reviews
+                        {freelancer.total_reviews || 0} reviews
                       </span>
                     </div>
                   )}
@@ -378,10 +417,10 @@ export default function FreelancerProfilePage() {
                         {freelancer.email}
                       </span>
                     </div>
-                    {freelancer.location && (
+                    {freelancer.contact_number && (
                       <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        <span>{freelancer.location}</span>
+                        <Phone className="h-4 w-4 mr-2" />
+                        <span>{freelancer.contact_number}</span>
                       </div>
                     )}
                     <div className="flex items-center">
@@ -396,6 +435,25 @@ export default function FreelancerProfilePage() {
                       <p className="text-gray-600 leading-relaxed">
                         {freelancer.bio}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Skills Preview */}
+                  {freelancer.skills_read && freelancer.skills_read.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {freelancer.skills_read.slice(0, 5).map((skillItem, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                        >
+                          {skillItem.skill.name}
+                        </span>
+                      ))}
+                      {freelancer.skills_read.length > 5 && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                          +{freelancer.skills_read.length - 5} more
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -504,74 +562,113 @@ export default function FreelancerProfilePage() {
           </div>
         </div>
 
-        {/* Tab Content - I'll add the rest in the next part due to length */}
+        {/* Tab Content */}
         <div className="animate-in fade-in duration-300">
+          {/* Overview Tab */}
           {activeTab === "overview" && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main Content */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Skills Section */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Code className="h-5 w-5 mr-2" />
-                    Top Skills
-                  </h3>
-                  <div className="space-y-4">
-                    {freelancer.skills_read?.slice(0, 5).map((skillItem, index) => {
-                      const SkillIcon = getSkillIcon(skillItem.skill.name);
-                      return (
-                        <div
-                          key={index}
-                          className="p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
-                        >
-                          <div className="flex items-center mb-3">
-                            <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center mr-3">
-                              <SkillIcon className="h-5 w-5 text-gray-600" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-medium text-gray-900">{skillItem.skill.name}</div>
-                              <div className="text-sm text-gray-500">{skillItem.skill.category.name}</div>
-                            </div>
-                            <div className="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700">
-                              {getProficiencyLevel(skillItem.level)}
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="text-xs text-gray-500">Proficiency level:</div>
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((level) => (
-                                <div
-                                  key={level}
-                                  className={`h-2 w-2 rounded-full mx-0.5 ${
-                                    level <= skillItem.level 
-                                      ? 'bg-green-500' 
-                                      : 'bg-gray-200'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {freelancer.skills_read?.length > 5 && (
-                    <button
-                      onClick={() => setActiveTab("skills")}
-                      className="w-full mt-4 py-2 text-center text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-                    >
-                      View all {freelancer.skills_read.length} skills →
-                    </button>
-                  )}
-                </div>
-
-                {/* Bio Section */}
+                {/* About Section */}
                 {freelancer.bio && (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">About Me</h3>
-                    <p className="text-gray-600 leading-relaxed">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <User className="h-5 w-5 mr-2" />
+                      About Me
+                    </h3>
+                    <p className="text-gray-600 leading-relaxed whitespace-pre-line">
                       {freelancer.bio}
                     </p>
+                  </div>
+                )}
+
+                {/* Skills Section */}
+                {freelancer.skills_read && freelancer.skills_read.length > 0 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Code className="h-5 w-5 mr-2" />
+                      Top Skills
+                    </h3>
+                    <div className="space-y-4">
+                      {freelancer.skills_read.slice(0, 5).map((skillItem, index) => {
+                        const SkillIcon = getSkillIcon(skillItem.skill.name);
+                        const categories = getSkillCategories(skillItem.skill);
+                        
+                        return (
+                          <div
+                            key={index}
+                            className="p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
+                          >
+                            <div className="flex items-center mb-3">
+                              <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center mr-3">
+                                <SkillIcon className="h-5 w-5 text-gray-600" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">{skillItem.skill.name}</div>
+                                <div className="text-sm text-gray-500" title={categories.join(', ')}>
+                                  {formatCategories(categories)}
+                                </div>
+                              </div>
+                              <div className="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+                                {getProficiencyLevel(skillItem.level)}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs text-gray-500">Proficiency level:</div>
+                              <div className="flex">
+                                {[1, 2, 3, 4, 5].map((level) => (
+                                  <div
+                                    key={level}
+                                    className={`h-2 w-2 rounded-full mx-0.5 ${
+                                      level <= skillItem.level 
+                                        ? 'bg-green-500' 
+                                        : 'bg-gray-200'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {freelancer.skills_read.length > 5 && (
+                      <button
+                        onClick={() => setActiveTab("skills")}
+                        className="w-full mt-4 py-2 text-center text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+                      >
+                        View all {freelancer.skills_read.length} skills →
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Recent Experience */}
+                {freelancer.experience && freelancer.experience.length > 0 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Building className="h-5 w-5 mr-2" />
+                      Recent Experience
+                    </h3>
+                    <div className="space-y-4">
+                      {freelancer.experience.slice(0, 2).map((exp, index) => (
+                        <div key={index} className="border-l-2 border-gray-200 pl-4">
+                          <div className="font-medium text-gray-900">{exp.role}</div>
+                          <div className="text-sm text-gray-600">{exp.company}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {exp.start_date && formatDate(exp.start_date)} - {exp.end_date ? formatDate(exp.end_date) : 'Present'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {freelancer.experience.length > 2 && (
+                      <button
+                        onClick={() => setActiveTab("experience")}
+                        className="w-full mt-4 py-2 text-center text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+                      >
+                        View all {freelancer.experience.length} experiences →
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -588,7 +685,7 @@ export default function FreelancerProfilePage() {
                     <div>
                       <div className="text-xs text-gray-500 mb-1">Email</div>
                       <div className="font-medium text-gray-900 flex items-center">
-                        <Mail className="h-4 w-4 mr-2" />
+                        <Mail className="h-4 w-4 mr-2 text-gray-400" />
                         {freelancer.email}
                       </div>
                     </div>
@@ -596,29 +693,54 @@ export default function FreelancerProfilePage() {
                       <div>
                         <div className="text-xs text-gray-500 mb-1">Phone</div>
                         <div className="font-medium text-gray-900 flex items-center">
-                          <Phone className="h-4 w-4 mr-2" />
+                          <Phone className="h-4 w-4 mr-2 text-gray-400" />
                           {freelancer.contact_number}
-                        </div>
-                      </div>
-                    )}
-                    {freelancer.location && (
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">Location</div>
-                        <div className="font-medium text-gray-900 flex items-center">
-                          <MapPin className="h-4 w-4 mr-2" />
-                          {freelancer.location}
                         </div>
                       </div>
                     )}
                     <div>
                       <div className="text-xs text-gray-500 mb-1">Member Since</div>
                       <div className="font-medium text-gray-900 flex items-center">
-                        <Calendar className="h-4 w-4 mr-2" />
+                        <Calendar className="h-4 w-4 mr-2 text-gray-400" />
                         {formatDate(freelancer.created_at)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Hourly Rate</div>
+                      <div className="font-medium text-gray-900 flex items-center">
+                        <DollarSign className="h-4 w-4 mr-2 text-gray-400" />
+                        {formatCurrency(freelancer.hourly_rate)}/hour
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Education Preview */}
+                {freelancer.education && freelancer.education.length > 0 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <GraduationCap className="h-5 w-5 mr-2" />
+                      Education
+                    </h3>
+                    <div className="space-y-4">
+                      {freelancer.education.slice(0, 2).map((edu, index) => (
+                        <div key={index}>
+                          <div className="font-medium text-gray-900">{edu.degree}</div>
+                          <div className="text-sm text-gray-600">{edu.institution}</div>
+                          <div className="text-xs text-gray-500">{edu.year_completed}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {freelancer.education.length > 2 && (
+                      <button
+                        onClick={() => setActiveTab("education")}
+                        className="w-full mt-4 py-2 text-center text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+                      >
+                        View all {freelancer.education.length} educations →
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Quick Actions */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -643,7 +765,6 @@ export default function FreelancerProfilePage() {
                       )}
                     </button>
                     
-                    {/* Schedule Meeting in Quick Actions */}
                     {proposalId && (
                       <button
                         onClick={() => setShowMeetingModal(true)}
@@ -671,18 +792,179 @@ export default function FreelancerProfilePage() {
             </div>
           )}
 
-          {/* Other tabs content would go here - Skills, Experience, Education, Portfolio */}
-          {/* I'll keep it brief for space, but you have this in your original code */}
+          {/* Skills Tab */}
+          {activeTab === "skills" && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                <Code className="h-5 w-5 mr-2" />
+                All Skills ({freelancer.skills_read?.length || 0})
+              </h3>
+              
+              {freelancer.skills_read && freelancer.skills_read.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {freelancer.skills_read.map((skillItem, index) => {
+                    const SkillIcon = getSkillIcon(skillItem.skill.name);
+                    const categories = getSkillCategories(skillItem.skill);
+                    
+                    return (
+                      <div
+                        key={index}
+                        className="p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
+                      >
+                        <div className="flex items-center mb-3">
+                          <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center mr-3">
+                            <SkillIcon className="h-5 w-5 text-gray-600" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">{skillItem.skill.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {categories.length > 0 ? categories.join(', ') : 'General'}
+                            </div>
+                          </div>
+                          <div className="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+                            {getProficiencyLevel(skillItem.level)}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-gray-500">Proficiency:</div>
+                          <div className="flex">
+                            {[1, 2, 3, 4, 5].map((level) => (
+                              <div
+                                key={level}
+                                className={`h-2 w-2 rounded-full mx-0.5 ${
+                                  level <= skillItem.level 
+                                    ? 'bg-green-500' 
+                                    : 'bg-gray-200'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">No skills listed</p>
+              )}
+            </div>
+          )}
+
+          {/* Experience Tab */}
+          {activeTab === "experience" && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                <Building className="h-5 w-5 mr-2" />
+                Work Experience ({freelancer.experience?.length || 0})
+              </h3>
+              
+              {freelancer.experience && freelancer.experience.length > 0 ? (
+                <div className="space-y-6">
+                  {freelancer.experience.map((exp, index) => (
+                    <div key={index} className="relative pl-8 pb-6 border-l-2 border-gray-200 last:pb-0">
+                      <div className="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-white border-2" style={{ borderColor: primaryColor }}></div>
+                      <div className="mb-1">
+                        <h4 className="text-lg font-medium text-gray-900">{exp.role}</h4>
+                        <p className="text-gray-700">{exp.company}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {exp.start_date && formatDate(exp.start_date)} - {exp.end_date ? formatDate(exp.end_date) : 'Present'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">No work experience listed</p>
+              )}
+            </div>
+          )}
+
+          {/* Education Tab */}
+          {activeTab === "education" && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                <GraduationCap className="h-5 w-5 mr-2" />
+                Education ({freelancer.education?.length || 0})
+              </h3>
+              
+              {freelancer.education && freelancer.education.length > 0 ? (
+                <div className="space-y-6">
+                  {freelancer.education.map((edu, index) => (
+                    <div key={index} className="relative pl-8 pb-6 border-l-2 border-gray-200 last:pb-0">
+                      <div className="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-white border-2" style={{ borderColor: primaryColor }}></div>
+                      <div className="mb-1">
+                        <h4 className="text-lg font-medium text-gray-900">{edu.degree}</h4>
+                        <p className="text-gray-700">{edu.institution}</p>
+                        <p className="text-sm text-gray-500 mt-1">Completed: {edu.year_completed}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">No education listed</p>
+              )}
+            </div>
+          )}
+
+          {/* Portfolio Tab */}
+          {activeTab === "portfolio" && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                <Trophy className="h-5 w-5 mr-2" />
+                Portfolio ({freelancer.portfolio?.length || 0})
+              </h3>
+              
+              {freelancer.portfolio && freelancer.portfolio.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {freelancer.portfolio.map((item, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                      {item.image && (
+                        <img 
+                          src={getFullMediaUrl(item.image)} 
+                          alt={item.title}
+                          className="w-full h-48 object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <div className="p-4">
+                        <h4 className="font-medium text-gray-900 mb-2">{item.title}</h4>
+                        {item.description && (
+                          <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+                        )}
+                        {item.link && (
+                          <a 
+                            href={item.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            View Project
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">No portfolio items listed</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Meeting Modal */}
-      <MeetingModal
-        isOpen={showMeetingModal}
-        onClose={() => setShowMeetingModal(false)}
-        freelancerId={userId}
-        proposalId={proposalId}
-      />
+      {showMeetingModal && (
+        <MeetingModal
+          isOpen={showMeetingModal}
+          onClose={() => setShowMeetingModal(false)}
+          freelancerId={userId}
+          proposalId={proposalId}
+        />
+      )}
     </>
   );
 }

@@ -1,19 +1,32 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiPrivate } from "@/lib/apiPrivate";
 
-// ----------------------------
-// HELPER: safe map & unique
-// ----------------------------
-const extractSkillsAndCategories = (skillsRead = []) => ({
-  skills_names: skillsRead.map(fs => fs.skill?.name).filter(Boolean),
-  categories_names: [
-    ...new Set(skillsRead.map(fs => fs.skill?.category?.name).filter(Boolean)),
-  ],
-});
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
-// ----------------------------
-// ASYNC THUNKS
-// ----------------------------
+const extractSkillsAndCategories = (skillsRead = []) => {
+  const skills_names = skillsRead.map(fs => fs.skill?.name).filter(Boolean);
+  
+  // Extract all categories from all skills (many-to-many relationship)
+  const categoriesSet = new Set();
+  skillsRead.forEach(fs => {
+    if (fs.skill?.categories && Array.isArray(fs.skill.categories)) {
+      fs.skill.categories.forEach(cat => {
+        if (cat?.name) categoriesSet.add(cat.name);
+      });
+    }
+  });
+  
+  return {
+    skills_names,
+    categories_names: Array.from(categoriesSet),
+  };
+};
+
+// ============================================================================
+// ASYNC THUNKS - PROFILE OPERATIONS
+// ============================================================================
 
 // FETCH FREELANCER PROFILE
 export const fetchFreelancerProfile = createAsyncThunk(
@@ -22,13 +35,16 @@ export const fetchFreelancerProfile = createAsyncThunk(
     try {
       const response = await apiPrivate.get("/profiles/");
       const data = response.data?.results?.[0] || null;
-      console.log(data)
+      
       if (data?.skills_read) {
         Object.assign(data, extractSkillsAndCategories(data.skills_read));
       }
+      
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || { message: error.message || "Failed to fetch profile." });
+      return rejectWithValue(
+        error.response?.data || { message: error.message || "Failed to fetch profile." }
+      );
     }
   }
 );
@@ -43,14 +59,16 @@ export const createFreelancerProfile = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || { message: error.message || "Failed to create profile." });
+      return rejectWithValue(
+        error.response?.data || { message: error.message || "Failed to create profile." }
+      );
     }
   }
 );
 
-// UPDATE FREELANCER PROFILE - FIXED VERSION
+// UPDATE FREELANCER PROFILE
 export const updateFreelancerProfile = createAsyncThunk(
-  "freelancerProfile/updateFreelancerProfile",
+  "freelancerProfile/update",
   async ({ manualData = {}, files = {} }, { getState, rejectWithValue }) => {
     try {
       const { data } = getState().freelancerProfile;
@@ -58,18 +76,14 @@ export const updateFreelancerProfile = createAsyncThunk(
 
       const formData = new FormData();
 
-      // ----------------------------
-      // SIMPLE TEXT FIELDS
-      // ----------------------------
+      // Simple text fields
       ["bio", "title", "contact_number", "hourly_rate"].forEach(field => {
         if (manualData[field] !== undefined && manualData[field] !== null && manualData[field] !== "") {
           formData.append(field, manualData[field]);
         }
       });
 
-      // ----------------------------
-      // SKILLS → SEND AS JSON STRING (DRF will parse it)
-      // ----------------------------
+      // Skills - convert to JSON string
       if (manualData.skills) {
         let skillsArray = [];
         
@@ -88,14 +102,12 @@ export const updateFreelancerProfile = createAsyncThunk(
         }
 
         if (skillsArray.length) {
-          // Send as JSON string - backend will parse it
           formData.append("skills", JSON.stringify(skillsArray));
         }
       }
 
-      // ----------------------------
-      // CATEGORIES → SEND AS JSON STRING (DRF will parse it)
-      // ----------------------------
+      // Categories - convert to JSON string
+      // Backend expects categories array to match skills array length
       if (manualData.categories) {
         let categoriesArray = [];
         
@@ -106,14 +118,11 @@ export const updateFreelancerProfile = createAsyncThunk(
         }
 
         if (categoriesArray.length) {
-          // Send as JSON string - backend will parse it
           formData.append("categories", JSON.stringify(categoriesArray));
         }
       }
 
-      // ----------------------------
-      // EDUCATION → SEND AS JSON STRING (DRF will parse it)
-      // ----------------------------
+      // Education - convert to JSON string
       if (manualData.education) {
         let educationArray = [];
         
@@ -128,14 +137,11 @@ export const updateFreelancerProfile = createAsyncThunk(
         }
 
         if (educationArray.length) {
-          // Send as JSON string - backend will parse it
           formData.append("education_input", JSON.stringify(educationArray));
         }
       }
 
-      // ----------------------------
-      // EXPERIENCE → SEND AS JSON STRING (DRF will parse it)
-      // ----------------------------
+      // Experience - convert to JSON string
       if (manualData.experience) {
         let experienceArray = [];
         
@@ -151,192 +157,201 @@ export const updateFreelancerProfile = createAsyncThunk(
         }
 
         if (experienceArray.length) {
-          // Send as JSON string - backend will parse it
           formData.append("experience_input", JSON.stringify(experienceArray));
         }
       }
 
-      // ----------------------------
-      // FILES - FIXED APPROACH
-      // ----------------------------
-      // Only append file fields if they are explicitly provided in the files object
+      // Portfolio - convert to JSON string
+      if (manualData.portfolio) {
+        let portfolioArray = [];
+        
+        if (Array.isArray(manualData.portfolio)) {
+          portfolioArray = manualData.portfolio
+            .filter(p => p && typeof p === "object" && !Array.isArray(p))
+            .map(proj => ({
+              title: String(proj.title || ""),
+              description: String(proj.description || ""),
+              link: proj.link && String(proj.link).trim() !== "" ? String(proj.link) : null
+            }));
+        }
+
+        if (portfolioArray.length) {
+          formData.append("portfolio_input", JSON.stringify(portfolioArray));
+        }
+      }
+
+      // Pricing - convert to JSON string
+      if (manualData.pricing) {
+        let pricingArray = [];
+        
+        if (Array.isArray(manualData.pricing)) {
+          pricingArray = manualData.pricing
+            .filter(p => p && typeof p === "object" && !Array.isArray(p))
+            .map(price => ({
+              pricing_type: String(price.pricing_type || ""),
+              hourly_rate: price.hourly_rate || null,
+              min_hourly_rate: price.min_hourly_rate || null,
+              max_hourly_rate: price.max_hourly_rate || null,
+              is_default: Boolean(price.is_default)
+            }));
+        }
+
+        if (pricingArray.length) {
+          formData.append("pricing_input", JSON.stringify(pricingArray));
+        }
+      }
+
+      // Handle file uploads
       if ("profilePicture" in files) {
         if (files.profilePicture instanceof File) {
-          // Validate image file type
           const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
           if (!allowedImageTypes.includes(files.profilePicture.type)) {
             throw new Error("Please upload a valid image file (JPG, PNG, GIF, WebP, or AVIF)");
           }
-          // Append the actual File object
           formData.append("profile_picture", files.profilePicture);
-          console.log("Appending new profile picture:", files.profilePicture.name);
         } else if (files.profilePicture === null) {
-          // To remove profile picture, send empty string
           formData.append("profile_picture", "");
-          console.log("Removing profile picture");
         }
-        // If undefined, don't append anything (leave existing file as is)
       }
 
       if ("resume" in files) {
         if (files.resume instanceof File) {
-          // Validate resume file type
           const allowedResumeTypes = ['.pdf', '.doc', '.docx'];
           const fileExtension = '.' + files.resume.name.split('.').pop().toLowerCase();
           
           if (!allowedResumeTypes.includes(fileExtension)) {
             throw new Error("Please upload a PDF, DOC, or DOCX file for resume");
           }
-          // Append the actual File object
           formData.append("resume", files.resume);
-          console.log("Appending new resume:", files.resume.name);
         } else if (files.resume === null) {
-          // To remove resume, send empty string
           formData.append("resume", "");
-          console.log("Removing resume");
-        }
-        // If undefined, don't append anything (leave existing file as is)
-      }
-
-      console.log("=== FormData contents ===");
-      for (let pair of formData.entries()) {
-        if (pair[1] instanceof File) {
-          console.log(pair[0] + ': [File] ' + pair[1].name);
-        } else {
-          console.log(pair[0] + ': ', pair[1]);
         }
       }
 
-      // ✅ Use PATCH for updates, POST for creation
       const method = data.id ? 'patch' : 'post';
       const url = data.id ? `/profiles/${data.id}/` : '/profiles/';
 
       const response = await apiPrivate[method](url, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       return response.data;
     } catch (error) {
       console.error("Update profile error:", error);
-      return rejectWithValue(error.response?.data || { message: error.message || "Failed to update profile." });
+      return rejectWithValue(
+        error.response?.data || { message: error.message || "Failed to update profile." }
+      );
     }
   }
 );
 
-// UPLOAD RESUME & PROFILE PICTURE WITH AI EXTRACTION
-export const uploadResumeAndExtract = createAsyncThunk(
-  "freelancerProfile/uploadResume",
-  async ({ resumeFile, profilePicture }, { rejectWithValue }) => {
+// ============================================================================
+// ASYNC THUNKS - PORTFOLIO OPERATIONS
+// ============================================================================
+
+// FETCH PORTFOLIO PROJECTS
+export const fetchPortfolioProjects = createAsyncThunk(
+  "freelancerProfile/fetchPortfolio",
+  async (_, { rejectWithValue }) => {
     try {
-      const formData = new FormData();
-
-      if (resumeFile instanceof File) {
-        formData.append("resume", resumeFile, resumeFile.name);
-      }
-
-      if (profilePicture instanceof File) {
-        formData.append("profile_picture", profilePicture, profilePicture.name);
-      }
-
-      if (!resumeFile && !profilePicture) {
-        throw new Error("No file selected.");
-      }
-
-      const response = await apiPrivate.post(
-        "/profiles/upload-resume/",
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
+      const response = await apiPrivate.get("/freelancer/portfolio/");
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || { message: error.message }
+        error.response?.data || { message: error.message || "Failed to fetch portfolio." }
       );
     }
   }
 );
 
-// UPLOAD RESUME ONLY (without extraction)
-export const uploadResumeOnly = createAsyncThunk(
-  "freelancerProfile/uploadResumeOnly",
-  async (resumeFile, { rejectWithValue }) => {
+// CREATE PORTFOLIO PROJECT
+export const createPortfolioProject = createAsyncThunk(
+  "freelancerProfile/createPortfolio",
+  async (projectData, { rejectWithValue }) => {
     try {
-      const formData = new FormData();
-      formData.append("resume", resumeFile);
-
-      const response = await apiPrivate.post("/profiles/upload-resume/", formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiPrivate.post("/freelancer/portfolio/", projectData);
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data || { message: error.message || "Failed to upload resume." }
+        error.response?.data || { message: error.message || "Failed to create portfolio project." }
       );
     }
   }
 );
 
-// ----------------------------
+// UPDATE PORTFOLIO PROJECT
+export const updatePortfolioProject = createAsyncThunk(
+  "freelancerProfile/updatePortfolio",
+  async ({ id, projectData }, { rejectWithValue }) => {
+    try {
+      const response = await apiPrivate.patch(`/freelancer/portfolio/${id}/`, projectData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || { message: error.message || "Failed to update portfolio project." }
+      );
+    }
+  }
+);
+
+// DELETE PORTFOLIO PROJECT
+export const deletePortfolioProject = createAsyncThunk(
+  "freelancerProfile/deletePortfolio",
+  async (id, { rejectWithValue }) => {
+    try {
+      await apiPrivate.delete(`/freelancer/portfolio/${id}/`);
+      return id;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || { message: error.message || "Failed to delete portfolio project." }
+      );
+    }
+  }
+);
+
+// ============================================================================
 // SLICE
-// ----------------------------
+// ============================================================================
+
 const freelancerProfileSlice = createSlice({
   name: "freelancerProfile",
   initialState: {
+    // Profile data
     data: null,
-    extractedData: null,
-    pendingExtractedData: null, // Temporary storage for confirmation
     loading: false,
-    resumeUploading: false,
     error: null,
     successMessage: null,
-    showConfirmDialog: false,
+    
+    // Portfolio data
+    portfolio: [],
+    portfolioLoading: false,
+    portfolioError: null,
   },
   reducers: {
     clearProfileState(state) {
       state.data = null;
-      state.extractedData = null;
-      state.pendingExtractedData = null;
       state.loading = false;
-      state.resumeUploading = false;
       state.error = null;
       state.successMessage = null;
-      state.showConfirmDialog = false;
+      state.portfolio = [];
+      state.portfolioLoading = false;
+      state.portfolioError = null;
     },
     clearError(state) {
       state.error = null;
+      state.portfolioError = null;
     },
     clearSuccessMessage(state) {
       state.successMessage = null;
     },
-    clearExtractedData(state) {
-      state.extractedData = null;
-      state.pendingExtractedData = null;
-      state.showConfirmDialog = false;
-    },
-    confirmExtractedData(state) {
-      // User confirmed - move pending data to extracted data
-      state.extractedData = state.pendingExtractedData;
-      state.pendingExtractedData = null;
-      state.showConfirmDialog = false;
-    },
-    cancelExtractedData(state) {
-      // User cancelled - clear pending data
-      state.pendingExtractedData = null;
-      state.showConfirmDialog = false;
-    },
   },
   extraReducers: (builder) => {
     builder
-      // FETCH
+      // ========================================================================
+      // PROFILE OPERATIONS
+      // ========================================================================
+      
+      // FETCH PROFILE
       .addCase(fetchFreelancerProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -351,7 +366,7 @@ const freelancerProfileSlice = createSlice({
         state.error = action.payload?.message || "Failed to fetch profile.";
       })
 
-      // CREATE
+      // CREATE PROFILE
       .addCase(createFreelancerProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -367,7 +382,7 @@ const freelancerProfileSlice = createSlice({
         state.error = action.payload?.message || "Failed to create profile.";
       })
 
-      // UPDATE
+      // UPDATE PROFILE
       .addCase(updateFreelancerProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -377,58 +392,78 @@ const freelancerProfileSlice = createSlice({
         state.loading = false;
         state.data = action.payload;
         state.successMessage = "Profile updated successfully!";
-        state.extractedData = null;
-        state.pendingExtractedData = null;
       })
       .addCase(updateFreelancerProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload?.message || "Failed to update profile.";
       })
 
-      // UPLOAD RESUME WITH EXTRACTION
-      .addCase(uploadResumeAndExtract.pending, (state) => {
-        state.resumeUploading = true;
-        state.error = null;
-        state.pendingExtractedData = null;
-        state.showConfirmDialog = false;
+      // ========================================================================
+      // PORTFOLIO OPERATIONS
+      // ========================================================================
+      
+      // FETCH PORTFOLIO
+      .addCase(fetchPortfolioProjects.pending, (state) => {
+        state.portfolioLoading = true;
+        state.portfolioError = null;
       })
-      .addCase(uploadResumeAndExtract.fulfilled, (state, action) => {
-        state.resumeUploading = false;
-        
-        // Store in pending state and show confirmation dialog
-        if (action.payload.extracted_data) {
-          state.pendingExtractedData = action.payload.extracted_data;
-          state.showConfirmDialog = true;
-          state.successMessage = "Resume uploaded! Review the extracted data.";
-        } else {
-          state.successMessage = "Files uploaded successfully!";
-        }
-        
-        // Update profile data
-        if (action.payload.profile) {
-          state.data = action.payload.profile;
-        }
+      .addCase(fetchPortfolioProjects.fulfilled, (state, action) => {
+        state.portfolioLoading = false;
+        // Ensure portfolio is always an array
+        state.portfolio = Array.isArray(action.payload) ? action.payload : [];
       })
-      .addCase(uploadResumeAndExtract.rejected, (state, action) => {
-        state.resumeUploading = false;
-        state.error = action.payload?.message || "Failed to upload resume.";
+      .addCase(fetchPortfolioProjects.rejected, (state, action) => {
+        state.portfolioLoading = false;
+        state.portfolio = []; // Reset to empty array on error
+        state.portfolioError = action.payload?.message || "Failed to fetch portfolio.";
       })
 
-      // UPLOAD RESUME ONLY
-      .addCase(uploadResumeOnly.pending, (state) => {
-        state.resumeUploading = true;
-        state.error = null;
+      // CREATE PORTFOLIO PROJECT
+      .addCase(createPortfolioProject.pending, (state) => {
+        state.portfolioLoading = true;
+        state.portfolioError = null;
       })
-      .addCase(uploadResumeOnly.fulfilled, (state, action) => {
-        state.resumeUploading = false;
-        state.successMessage = "Resume uploaded successfully!";
-        if (action.payload.profile) {
-          state.data = action.payload.profile;
+      .addCase(createPortfolioProject.fulfilled, (state, action) => {
+        state.portfolioLoading = false;
+        state.portfolio.push(action.payload);
+        state.successMessage = "Portfolio project added successfully!";
+      })
+      .addCase(createPortfolioProject.rejected, (state, action) => {
+        state.portfolioLoading = false;
+        state.portfolioError = action.payload?.message || "Failed to create portfolio project.";
+      })
+
+      // UPDATE PORTFOLIO PROJECT
+      .addCase(updatePortfolioProject.pending, (state) => {
+        state.portfolioLoading = true;
+        state.portfolioError = null;
+      })
+      .addCase(updatePortfolioProject.fulfilled, (state, action) => {
+        state.portfolioLoading = false;
+        const index = state.portfolio.findIndex(p => p.id === action.payload.id);
+        if (index !== -1) {
+          state.portfolio[index] = action.payload;
         }
+        state.successMessage = "Portfolio project updated successfully!";
       })
-      .addCase(uploadResumeOnly.rejected, (state, action) => {
-        state.resumeUploading = false;
-        state.error = action.payload?.message || "Failed to upload resume.";
+      .addCase(updatePortfolioProject.rejected, (state, action) => {
+        state.portfolioLoading = false;
+        state.portfolioError = action.payload?.message || "Failed to update portfolio project.";
+      })
+
+      // DELETE PORTFOLIO PROJECT
+      .addCase(deletePortfolioProject.pending, (state) => {
+        state.portfolioLoading = true;
+        state.portfolioError = null;
+      })
+      .addCase(deletePortfolioProject.fulfilled, (state, action) => {
+        state.portfolioLoading = false;
+        state.portfolio = state.portfolio.filter(p => p.id !== action.payload);
+        state.successMessage = "Portfolio project deleted successfully!";
+      })
+      .addCase(deletePortfolioProject.rejected, (state, action) => {
+        state.portfolioLoading = false;
+        state.portfolioError = action.payload?.message || "Failed to delete portfolio project.";
       });
   },
 });
@@ -436,10 +471,7 @@ const freelancerProfileSlice = createSlice({
 export const { 
   clearProfileState, 
   clearError, 
-  clearSuccessMessage, 
-  clearExtractedData,
-  confirmExtractedData,
-  cancelExtractedData 
+  clearSuccessMessage,
 } = freelancerProfileSlice.actions;
 
 export default freelancerProfileSlice.reducer;

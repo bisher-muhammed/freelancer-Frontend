@@ -4,16 +4,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Shield, CheckCircle, XCircle, AlertTriangle, FileText, Clock } from 'lucide-react';
 
-export default function TrackingPolicyModal({ 
-  contractId, 
-  onAccept, 
-  onReject, 
+export default function TrackingPolicyModal({
+  contractId,
+  onAccept,
+  onReject,
   onClose,
-  apiPrivate 
+  apiPrivate
 }) {
   const [policy, setPolicy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [errorDetail, setErrorDetail] = useState(null);
   const [accepting, setAccepting] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
   const contentRef = useRef(null);
@@ -25,22 +26,47 @@ export default function TrackingPolicyModal({
   const fetchActivePolicy = async () => {
     try {
       setLoading(true);
-      const res = await apiPrivate.get('/tracking-policies/active/');
+      setError(null);
+      setErrorDetail(null);
+
+      // apiPrivate is axios.create() so .get() is correct.
+      // baseURL ends with '/' so no leading slash needed on path.
+      const res = await apiPrivate.get('tracking-policies/active/');
+      console.log('✅ Policy fetched:', res.data);
       setPolicy(res.data);
-      
-      // Check if content is initially scrollable
+
       setTimeout(() => {
         if (contentRef.current) {
           const { scrollHeight, clientHeight } = contentRef.current;
-          // If content doesn't require scrolling, enable accept button
           if (scrollHeight <= clientHeight) {
             setHasScrolled(true);
           }
         }
-      }, 100);
+      }, 150);
+
     } catch (err) {
-      console.error('Error fetching policy:', err);
-      setError('Failed to load tracking policy. Please try again.');
+      const status = err?.response?.status;
+      const serverMsg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        (typeof err?.response?.data === 'string' ? err.response.data : null) ||
+        err?.message ||
+        'Unknown error';
+
+      console.error('❌ Policy fetch failed:', { status, serverMsg, url: `${apiPrivate?.defaults?.baseURL}tracking-policies/active/` });
+
+      setErrorDetail(`HTTP ${status ?? 'network error'} — ${serverMsg}`);
+
+      if (status === 404) {
+        setError('No active tracking policy found. Ask your administrator to create and activate one.');
+      } else if (status === 401) {
+        setError('Session expired. Please refresh the page and log in again.');
+      } else if (status === 403) {
+        setError('You do not have permission to view this policy.');
+      } else {
+        setError('Failed to load tracking policy.');
+      }
     } finally {
       setLoading(false);
     }
@@ -48,7 +74,6 @@ export default function TrackingPolicyModal({
 
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
-    // Consider scrolled if user is within 50px of bottom or content doesn't require scrolling
     if (scrollHeight - scrollTop - clientHeight < 50) {
       setHasScrolled(true);
     }
@@ -66,16 +91,20 @@ export default function TrackingPolicyModal({
 
     setAccepting(true);
     try {
-      await apiPrivate.post('/tracker/policy/accept/', {
+      await apiPrivate.post('tracking/policy/accept/', {
         contract_id: contractId
       });
-      
+
       if (onAccept) onAccept();
       alert('Tracking policy accepted successfully!');
       onClose();
     } catch (err) {
-      console.error('Error accepting policy:', err);
-      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to accept policy.';
+      console.error('❌ Policy accept failed:', err);
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.response?.data?.detail ||
+        'Failed to accept policy. Please try again.';
       alert(errorMsg);
     } finally {
       setAccepting(false);
@@ -86,71 +115,69 @@ export default function TrackingPolicyModal({
     if (!confirm('Are you sure you want to reject the tracking policy? This may affect your ability to work on this contract.')) {
       return;
     }
-    
     if (onReject) onReject();
     onClose();
   };
 
-  // If there's no real policy content, we can create a sample policy
   const getPolicyContent = () => {
     if (!policy?.content) {
-      return `# Work Tracking Policy - Version 1
+      return `Work Tracking Policy — Version ${policy?.version || '1.0'}
 
-## Important Notice
-Please read this tracking policy carefully before accepting. By accepting, you consent to the tracking requirements outlined below.
-
-## 1. Introduction
+1. INTRODUCTION
 This Work Tracking Policy outlines the terms and conditions for work tracking on the FreelancerHub platform. By accepting this policy, you agree to the tracking mechanisms described herein.
 
-## 2. Tracking Methods
+2. TRACKING METHODS
 We use the following methods to track work:
-- **Time Tracking**: Automated time tracking for hourly contracts
-- **Activity Monitoring**: Periodic screenshots (when applicable)
-- **Productivity Metrics**: Measurement of active work time
-- **Deliverable Submission**: Tracking of submitted work items
+  - Time Tracking: Automated time tracking for hourly contracts
+  - Activity Monitoring: Periodic screenshots (when applicable)
+  - Productivity Metrics: Measurement of active work time
+  - Deliverable Submission: Tracking of submitted work items
 
-## 3. Data Collection
+3. DATA COLLECTION
 We collect:
-- Work hours and patterns
-- Application usage during work hours
-- Mouse and keyboard activity (for verification)
-- Screenshots (blurred for privacy)
-- Deliverable submission timestamps
+  - Work hours and patterns
+  - Application usage during work hours
+  - Mouse and keyboard activity (for verification)
+  - Screenshots (blurred for privacy)
+  - Deliverable submission timestamps
 
-## 4. Privacy Protection
+4. PRIVACY PROTECTION
 Your privacy is important:
-- Screenshots are blurred to protect sensitive information
-- Personal data is never stored or shared
-- Tracking only occurs during contracted work hours
-- You can pause tracking at any time for breaks
+  - Screenshots are blurred to protect sensitive information
+  - Personal data is never stored or shared with third parties
+  - Tracking only occurs during contracted work hours
+  - You can pause tracking at any time for breaks
 
-## 5. Purpose of Tracking
+5. PURPOSE OF TRACKING
 Tracking helps ensure:
-- Accurate billing for clients
-- Fair payment for freelancers
-- Dispute resolution support
-- Quality assurance
+  - Accurate billing for clients
+  - Fair payment for freelancers
+  - Dispute resolution support
+  - Quality assurance
 
-## 6. Your Rights
+6. YOUR RIGHTS
 You have the right to:
-- Review tracking data
-- Request data correction
-- Pause tracking for breaks
-- Opt-out of certain tracking features (may limit functionality)
+  - Review your tracking data at any time
+  - Request data correction
+  - Pause tracking for personal breaks
+  - Opt-out of certain tracking features (may limit functionality)
 
-## 7. Acceptance
+7. ACCEPTANCE
 By accepting this policy, you acknowledge that you have read and understood these terms and agree to enable work tracking for this contract.
 
-## 8. Policy Updates
+8. POLICY UPDATES
 This policy may be updated periodically. You will be notified of significant changes and may need to re-accept the updated policy.
 
----
-*Last updated: January 10, 2026*
-*Policy version: 1.0*`;
+────────────────────────────────────────
+Version: ${policy?.version || '1.0'}
+Effective: ${policy?.created_at
+  ? new Date(policy.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  : 'January 10, 2026'}`;
     }
     return policy.content;
   };
 
+  // ─── LOADING ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -164,15 +191,31 @@ This policy may be updated periodically. You will be notified of significant cha
     );
   }
 
+  // ─── ERROR ────────────────────────────────────────────────────────────────
   if (error) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-8">
           <div className="flex items-center gap-3 mb-4 text-red-600">
             <AlertTriangle className="w-6 h-6" />
-            <h3 className="text-lg font-semibold">Error</h3>
+            <h3 className="text-lg font-semibold">Unable to Load Policy</h3>
           </div>
-          <p className="text-gray-700 mb-6">{error}</p>
+
+          <p className="text-gray-700 mb-3">{error}</p>
+
+          {/* Exact error detail for debugging */}
+          {errorDetail && (
+            <div className="bg-gray-100 rounded-lg p-3 mb-6 space-y-1">
+              <p className="text-xs font-mono text-red-700 break-all">{errorDetail}</p>
+              <p className="text-xs text-gray-500">
+                URL:{' '}
+                <span className="font-mono">
+                  {apiPrivate?.defaults?.baseURL}tracking-policies/active/
+                </span>
+              </p>
+            </div>
+          )}
+
           <div className="flex gap-3 justify-end">
             <button
               onClick={fetchActivePolicy}
@@ -192,11 +235,13 @@ This policy may be updated periodically. You will be notified of significant cha
     );
   }
 
+  // ─── MAIN MODAL ───────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
               <Shield className="w-5 h-5 text-indigo-600" />
@@ -216,8 +261,8 @@ This policy may be updated periodically. You will be notified of significant cha
           </button>
         </div>
 
-        {/* Policy Content */}
-        <div 
+        {/* Scrollable Content */}
+        <div
           ref={contentRef}
           className="flex-1 overflow-y-auto p-6"
           onScroll={handleScroll}
@@ -228,23 +273,21 @@ This policy may be updated periodically. You will be notified of significant cha
               <div>
                 <h3 className="font-semibold text-blue-900 mb-1">Important Notice</h3>
                 <p className="text-sm text-blue-700">
-                  Please read this tracking policy carefully before accepting. 
+                  Please read this tracking policy carefully before accepting.
                   By accepting, you consent to the tracking requirements outlined below.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="prose prose-sm max-w-none">
-            <div className="text-gray-700 whitespace-pre-line leading-relaxed">
-              {getPolicyContent()}
-            </div>
+          <div className="text-gray-700 whitespace-pre-line leading-relaxed text-sm">
+            {getPolicyContent()}
           </div>
 
           {!hasScrolled && (
             <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-center gap-2 text-yellow-800">
-                <AlertTriangle className="w-5 h-5" />
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
                 <p className="text-sm font-medium">
                   Please scroll to the bottom to read the entire policy
                 </p>
@@ -255,17 +298,20 @@ This policy may be updated periodically. You will be notified of significant cha
           <div className="mt-6 pt-6 border-t">
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Clock className="w-4 h-4" />
-              <span>Policy created on {new Date(policy?.created_at || new Date()).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}</span>
+              <span>
+                Policy created on{' '}
+                {new Date(policy?.created_at || new Date()).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="border-t p-6 bg-gray-50">
+        {/* Footer */}
+        <div className="border-t p-6 bg-gray-50 rounded-b-xl flex-shrink-0">
           <div className="flex flex-col sm:flex-row gap-3 justify-end">
             <button
               onClick={handleReject}
@@ -278,11 +324,11 @@ This policy may be updated periodically. You will be notified of significant cha
             <button
               onClick={handleAccept}
               disabled={accepting || !hasScrolled}
-              className={`px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+              className={`px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-white ${
                 accepting || !hasScrolled
                   ? 'bg-indigo-400 cursor-not-allowed'
                   : 'bg-indigo-600 hover:bg-indigo-700'
-              } text-white`}
+              }`}
             >
               {accepting ? (
                 <>
@@ -292,15 +338,15 @@ This policy may be updated periodically. You will be notified of significant cha
               ) : (
                 <>
                   <CheckCircle className="w-5 h-5" />
-                  Accept & Enable Tracking
+                  Accept &amp; Enable Tracking
                 </>
               )}
             </button>
           </div>
-          
+
           {!hasScrolled && (
             <p className="text-xs text-gray-500 text-center mt-3">
-              The accept button will be enabled once you've read the entire policy
+              The accept button will be enabled once you have read the entire policy
             </p>
           )}
         </div>
@@ -308,4 +354,3 @@ This policy may be updated periodically. You will be notified of significant cha
     </div>
   );
 }
-

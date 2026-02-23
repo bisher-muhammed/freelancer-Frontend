@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import {
   Briefcase,
-  Bell,
   ChevronDown,
   Menu,
   X,
@@ -17,12 +16,12 @@ import { logout } from "../../app/store/slices/userSlice";
 import { persistor } from "@/app/store/store";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import NotificationBell from "../NotificationBell";
 
 export default function FreelancerHeader({ onMenuClick }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [notifications] = useState(1);
 
   const dispatch = useDispatch();
   const router = useRouter();
@@ -92,13 +91,8 @@ export default function FreelancerHeader({ onMenuClick }) {
 
           {/* Right Side - Notification and User Profile */}
           <div className="flex items-center gap-4">
-            {/* Notification Bell */}
-            <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell className="h-5 w-5" />
-              {notifications > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              )}
-            </button>
+            {/* Notification Bell Component */}
+            <NotificationBell />
 
             {/* User Profile Dropdown */}
             <div className="relative">

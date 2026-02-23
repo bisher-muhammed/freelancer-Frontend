@@ -7,12 +7,12 @@ import {
   Star,
   DollarSign,
   FileText,
-  Calendar,
   ArrowUp,
   ArrowDown,
   Menu,
 } from "lucide-react";
 import { useSelector } from "react-redux";
+import { apiPrivate } from "@/lib/apiPrivate";
 
 export default function AdminDashboard() {
   const user = useSelector((state) => state.user);
@@ -21,123 +21,155 @@ export default function AdminDashboard() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [financeStats, setFinanceStats] = useState(null);
+  const [recentActivityData, setRecentActivityData] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    
     // Check mobile screen
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     
+    // Fetch data from backend
+    fetchDashboardData();
+    
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('resize', checkMobile);
     };
   }, []);
 
-  // Platform statistics
-  const platformStats = [
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch both stats and activity in parallel
+      const [statsResponse, activityResponse] = await Promise.all([
+        apiPrivate.get('admin-finanas-states/'),
+        apiPrivate.get('admin/activity/')
+      ]);
+      
+      setFinanceStats(statsResponse.data);
+      
+      // Ensure activity data is always an array
+      const activityData = activityResponse.data;
+      if (Array.isArray(activityData)) {
+        setRecentActivityData(activityData);
+      } else if (activityData && Array.isArray(activityData.results)) {
+        // Handle paginated response
+        setRecentActivityData(activityData.results);
+      } else {
+        console.warn('Activity data is not an array:', activityData);
+        setRecentActivityData([]);
+      }
+      
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load dashboard data');
+      setRecentActivityData([]); // Set to empty array on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Format currency
+  const formatCurrency = (value) => {
+    if (value === null || value === undefined) return '$0';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  // Format number with commas
+  const formatNumber = (value) => {
+    if (value === null || value === undefined) return '0';
+    return new Intl.NumberFormat('en-US').format(value);
+  };
+
+  // Format percentage change
+  const formatChange = (changePct) => {
+    if (changePct === null || changePct === undefined) return 'N/A';
+    const sign = changePct >= 0 ? '+' : '';
+    return `${sign}${changePct.toFixed(1)}%`;
+  };
+
+  // Map activity actions to icons and colors
+  const getActivityIcon = (description) => {
+    if (!description) return { icon: FileText, color: 'bg-gray-500' };
+    
+    const lowerDesc = description.toLowerCase();
+    
+    if (lowerDesc.includes('registered')) {
+      return { icon: Users, color: 'bg-blue-500' };
+    }
+    if (lowerDesc.includes('project posted') || lowerDesc.includes('project created')) {
+      return { icon: FileText, color: 'bg-green-500' };
+    }
+    if (lowerDesc.includes('payment')) {
+      return { icon: DollarSign, color: 'bg-purple-500' };
+    }
+    if (lowerDesc.includes('dispute')) {
+      return { icon: CheckCircle, color: 'bg-red-500' };
+    }
+    if (lowerDesc.includes('completed')) {
+      return { icon: CheckCircle, color: 'bg-green-500' };
+    }
+    
+    // Default
+    return { icon: FileText, color: 'bg-gray-500' };
+  };
+
+  // Format recent activity data from backend
+  const recentActivity = recentActivityData.map((activity) => {
+    const { icon, color } = getActivityIcon(activity.description);
+    return {
+      type: activity.action,
+      icon,
+      color,
+      text: activity.description,
+      time: activity.time_ago,
+    };
+  });
+
+  // Platform statistics - now using real data
+  const platformStats = financeStats ? [
     {
       label: "Total Users",
-      value: "12,458",
-      change: "+12.5%",
-      changeType: "up",
+      value: formatNumber(financeStats.total_users.value),
+      change: formatChange(financeStats.total_users.change_pct),
+      changeType: financeStats.total_users.change_pct >= 0 ? "up" : "down",
       icon: Users,
       color: "bg-blue-500",
     },
     {
       label: "Active Projects",
-      value: "1,247",
-      change: "+8.2%",
+      value: formatNumber(financeStats.active_projects),
+      change: "N/A", // Backend doesn't provide change for this yet
       changeType: "up",
       icon: FileText,
       color: "bg-green-500",
     },
     {
       label: "Total Revenue",
-      value: "$524,890",
-      change: "+23.1%",
-      changeType: "up",
+      value: formatCurrency(financeStats.total_revenue.value),
+      change: formatChange(financeStats.total_revenue.change_pct),
+      changeType: financeStats.total_revenue.change_pct >= 0 ? "up" : "down",
       icon: DollarSign,
       color: "bg-purple-500",
     },
     {
       label: "Platform Fee",
-      value: "$52,489",
-      change: "+18.4%",
-      changeType: "up",
+      value: formatCurrency(financeStats.platform_fee.value),
+      change: formatChange(financeStats.platform_fee.change_pct),
+      changeType: financeStats.platform_fee.change_pct >= 0 ? "up" : "down",
       icon: TrendingUp,
       color: "bg-orange-500",
     },
-  ];
-
-  // Recent activity data
-  const recentActivity = [
-    {
-      type: "user",
-      icon: Users,
-      color: "bg-blue-500",
-      text: "New freelancer registered: Sarah Johnson",
-      time: "5 minutes ago",
-    },
-    {
-      type: "project",
-      icon: FileText,
-      color: "bg-green-500",
-      text: "New project posted: E-commerce Website Development",
-      time: "15 minutes ago",
-    },
-    {
-      type: "payment",
-      icon: DollarSign,
-      color: "bg-purple-500",
-      text: "Payment processed: $5,000 from Tech Startup Inc.",
-      time: "1 hour ago",
-    },
-    {
-      type: "dispute",
-      icon: CheckCircle,
-      color: "bg-red-500",
-      text: "New dispute opened: Project #1234",
-      time: "2 hours ago",
-    },
-    {
-      type: "complete",
-      icon: CheckCircle,
-      color: "bg-green-500",
-      text: "Project completed: Mobile App Design",
-      time: "3 hours ago",
-    },
-  ];
-
-  // Pending actions
-  const pendingActions = [
-    {
-      title: "Withdrawal Request",
-      subtitle: "John Doe - $5,000",
-      time: "30 min ago",
-    },
-    {
-      title: "Dispute Resolution",
-      subtitle: "Website Development",
-      time: "1 hour ago",
-    },
-    {
-      title: "Profile Verification",
-      subtitle: "Jane Smith",
-      time: "2 hours ago",
-    },
-  ];
-
-  // Platform health metrics
-  const platformHealth = [
-    { label: "System Uptime", value: "99.9%", status: "excellent" },
-    { label: "Average Response Time", value: "124ms", status: "good" },
-    { label: "Active Sessions", value: "2,456", status: "good" },
-    { label: "Server Load", value: "45%", status: "excellent" },
-  ];
+  ] : [];
 
   // Top performers
   const topFreelancers = [
@@ -152,18 +184,39 @@ export default function AdminDashboard() {
     { name: "Digital Marketing Pro", projects: 34, spending: "$156,800" },
   ];
 
-  // Quick stats
-  const quickStats = [
-    { label: "Freelancers", value: "8,245" },
-    { label: "Clients", value: "4,213" },
-    { label: "Success Rate", value: "94.5%" },
-    { label: "Avg Project Value", value: "$4,250" },
-  ];
+  // Quick stats - using real data where available
+  const quickStats = financeStats ? [
+    { label: "Total Users", value: formatNumber(financeStats.total_users.value) },
+    { label: "Active Projects", value: formatNumber(financeStats.active_projects) },
+    { label: "Revenue (MTD)", value: formatCurrency(financeStats.total_revenue.value) },
+    { label: "Platform Fee (MTD)", value: formatCurrency(financeStats.platform_fee.value) },
+  ] : [];
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+            <p className="text-red-600 font-medium">{error}</p>
+            <button
+              onClick={fetchDashboardData}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -172,10 +225,20 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
       {/* Welcome Header */}
       <div className="mb-4 lg:mb-6">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-600 mt-1 text-sm lg:text-base">
-          Welcome back, {username}! Here's what's happening on your platform.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-gray-600 mt-1 text-sm lg:text-base">
+              Welcome back, {username}! Here's what's happening on your platform.
+            </p>
+          </div>
+          <button
+            onClick={fetchDashboardData}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            Refresh Data
+          </button>
+        </div>
       </div>
 
       {/* Platform Stats Cards */}
@@ -228,57 +291,32 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-3">
-              {recentActivity.map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3"
-                >
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity, index) => (
                   <div
-                    className={`p-2 rounded-lg ${activity.color} flex-shrink-0 mt-0.5`}
+                    key={index}
+                    className="flex items-start gap-3"
                   >
-                    <activity.icon className="h-3 w-3 lg:h-4 lg:w-4 text-white" />
+                    <div
+                      className={`p-2 rounded-lg ${activity.color} flex-shrink-0 mt-0.5`}
+                    >
+                      <activity.icon className="h-3 w-3 lg:h-4 lg:w-4 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900 leading-relaxed break-words">
+                        {activity.text}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {activity.time}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 leading-relaxed break-words">
-                      {activity.text}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {activity.time}
-                    </p>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 text-sm">No recent activity</p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Platform Health */}
-          <div className="bg-white p-4 lg:p-6 rounded-xl border border-gray-200">
-            <h3 className="text-lg lg:text-xl font-bold text-gray-900 mb-1">
-              Platform Health
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              System performance metrics
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {platformHealth.map((metric, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 border border-gray-100 rounded-lg"
-                >
-                  <span className="text-xs lg:text-sm text-gray-600 truncate pr-2">
-                    {metric.label}
-                  </span>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs lg:text-sm font-semibold text-gray-900">
-                      {metric.value}
-                    </span>
-                    <span className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-md font-medium whitespace-nowrap">
-                      {metric.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -366,42 +404,6 @@ export default function AdminDashboard() {
 
         {/* Sidebar */}
         <div className="xl:col-span-1 space-y-4 lg:space-y-6">
-          {/* Pending Actions */}
-          <div className="bg-white p-4 lg:p-6 rounded-xl border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">
-                Pending Actions
-              </h3>
-              <span className="px-2 py-1 bg-red-100 text-red-600 text-xs font-semibold rounded-full">
-                {pendingActions.length}
-              </span>
-            </div>
-
-            <div className="space-y-3 lg:space-y-4">
-              {pendingActions.map((action, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3"
-                >
-                  <div className="p-2 bg-orange-50 rounded-lg flex-shrink-0 mt-0.5">
-                    <Calendar className="h-3 w-3 lg:h-4 lg:w-4 text-orange-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {action.title}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-0.5 truncate">
-                      {action.subtitle}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {action.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Quick Stats */}
           <div className="bg-white p-4 lg:p-6 rounded-xl border border-gray-200">
             <h3 className="text-lg font-bold text-gray-900 mb-4">

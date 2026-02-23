@@ -6,7 +6,8 @@ import { apiPrivate } from "@/lib/apiPrivate";
 import "react-datepicker/dist/react-datepicker.css";
 import { 
   X, Calendar, Clock, Video, AlertCircle, 
-  CheckCircle, Loader2, Info, Briefcase, MessageSquare 
+  CheckCircle, Loader2, Info, Briefcase, MessageSquare,
+  User, Mail, MapPin
 } from "lucide-react";
 
 export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId }) {
@@ -139,6 +140,16 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
+  const formatDisplayDate = (date) => {
+    if (!date) return 'Not selected';
+    return format(date, 'EEEE, MMMM d, yyyy');
+  };
+
+  const formatDisplayTime = (date) => {
+    if (!date) return 'Not selected';
+    return format(date, 'h:mm a');
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -158,6 +169,10 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
             outline: none;
             transition: all 0.2s;
             background-color: white;
+            color: #111827;
+          }
+          .date-input-custom::placeholder {
+            color: #9CA3AF;
           }
           .date-input-custom:focus {
             border-color: ${primaryColor};
@@ -179,9 +194,17 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
             background-color: ${primaryColor} !important;
             border-radius: 0.5rem;
           }
+          .react-datepicker__time-list-item {
+            color: #111827;
+          }
+          .react-datepicker__current-month,
+          .react-datepicker__day-name,
+          .react-datepicker__day {
+            color: #111827;
+          }
         `}</style>
 
-        <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full relative">
+        <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full relative">
           {/* Header */}
           <div className="px-6 pt-6 pb-4" style={{ backgroundColor: lightBg, borderBottom: `2px solid ${borderColor}` }}>
             <div className="flex items-center justify-between">
@@ -195,13 +218,26 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
                   <p className="text-sm text-gray-600 mt-0.5">Set up a video call with the freelancer</p>
                 </div>
               </div>
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2"><X className="w-5 h-5" /></button>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
           <div className="px-6 py-5 bg-white">
-            {success && <div className="mb-5 p-4 rounded-xl bg-green-50 border-2 border-green-200 text-green-700 font-semibold">{success}</div>}
-            {error && <div className="mb-5 p-4 rounded-xl bg-red-50 border-2 border-red-200 text-red-700 font-semibold">{error}</div>}
+            {success && (
+              <div className="mb-5 p-4 rounded-xl bg-green-50 border-2 border-green-200 flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <span className="text-green-700 font-semibold">{success}</span>
+              </div>
+            )}
+            
+            {error && (
+              <div className="mb-5 p-4 rounded-xl bg-red-50 border-2 border-red-200 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <span className="text-red-700 font-semibold">{error}</span>
+              </div>
+            )}
 
             {loading ? (
               <div className="py-12 flex flex-col items-center justify-center">
@@ -210,26 +246,60 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
               </div>
             ) : (
               <div className="space-y-5">
+                {/* Freelancer Info Card */}
+                {freelancerInfo && (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 border-2 border-teal-100">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-teal-600 to-cyan-600 flex items-center justify-center text-white font-bold text-lg">
+                        {freelancerInfo.user?.first_name?.[0] || freelancerInfo.user?.username?.[0] || 'F'}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-gray-900">
+                          {freelancerInfo.user?.first_name && freelancerInfo.user?.last_name 
+                            ? `${freelancerInfo.user.first_name} ${freelancerInfo.user.last_name}`
+                            : freelancerInfo.user?.username || 'Freelancer'}
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          {freelancerInfo.title || 'Freelance Professional'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Meeting Type */}
-                <div className="grid grid-cols-2 gap-3">
-                  {['interview', 'review'].map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, meeting_type: type }))}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${formData.meeting_type === type ? 'border-teal-600 bg-teal-50' : 'border-gray-200'}`}
-                    >
-                      <p className="font-bold capitalize">{type}</p>
-                      <p className="text-xs text-gray-500">{type === 'interview' ? 'Screening' : 'Feedback'}</p>
-                    </button>
-                  ))}
+                <div>
+                  <label className="block text-sm font-bold text-gray-800 mb-3">
+                    Meeting Type
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { type: 'interview', label: 'Interview', description: 'Initial screening call' },
+                      { type: 'review', label: 'Review', description: 'Project feedback session' }
+                    ].map(({ type, label, description }) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, meeting_type: type }))}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${
+                          formData.meeting_type === type 
+                            ? 'border-teal-600 bg-teal-50 shadow-md' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <p className="font-bold text-gray-900">{label}</p>
+                        <p className="text-xs text-gray-500 mt-1">{description}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Date and Time Pickers (12 Hour Format) */}
+                {/* Date and Time Pickers */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-1.5">
-                      <Calendar className="w-4 h-4 text-teal-600" /> Start Time
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-2">
+                      <Calendar className="w-4 h-4 text-teal-600" /> 
+                      Start Date & Time
                     </label>
                     <DatePicker
                       selected={formData.start_time}
@@ -237,14 +307,15 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
                       showTimeSelect
                       timeIntervals={15}
                       dateFormat="MMMM d, yyyy h:mm aa"
-                      placeholderText="Select start"
+                      placeholderText="Select start date and time"
                       className="date-input-custom"
                       minDate={new Date()}
                     />
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-1.5">
-                      <Clock className="w-4 h-4 text-teal-600" /> End Time
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-2">
+                      <Clock className="w-4 h-4 text-teal-600" /> 
+                      End Date & Time
                     </label>
                     <DatePicker
                       selected={formData.end_time}
@@ -252,44 +323,121 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
                       showTimeSelect
                       timeIntervals={15}
                       dateFormat="MMMM d, yyyy h:mm aa"
-                      placeholderText="Select end"
+                      placeholderText="Select end date and time"
                       className="date-input-custom"
                       minDate={formData.start_time || new Date()}
                     />
                   </div>
                 </div>
 
-                {calculateDuration() && (
-                  <div className="p-3 rounded-xl bg-sky-50 border-2 border-sky-100 flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Duration</span>
-                    <span className="font-bold text-teal-700">{calculateDuration()}</span>
+                {/* Meeting Summary - Visible Text Display */}
+                {(formData.start_time || formData.end_time) && (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 space-y-3">
+                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                      <Info className="w-4 h-4 text-blue-600" />
+                      Meeting Details
+                    </h4>
+                    
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-gray-700">Date</p>
+                          <p className="text-gray-900 font-semibold">
+                            {formatDisplayDate(formData.start_time)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <Clock className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-gray-700">Time</p>
+                          <p className="text-gray-900 font-semibold">
+                            {formatDisplayTime(formData.start_time)} - {formatDisplayTime(formData.end_time)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {calculateDuration() && (
+                        <div className="flex items-center justify-between pt-2 mt-2 border-t border-blue-200">
+                          <span className="font-medium text-gray-700">Duration</span>
+                          <span className="font-bold text-teal-700 text-base">{calculateDuration()}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
+                {/* Notes/Agenda */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Notes</label>
+                  <label className="block text-sm font-bold text-gray-800 mb-2">
+                    Meeting Notes / Agenda
+                  </label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-teal-600 outline-none resize-none h-24"
-                    placeholder="Agenda details..."
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-200 outline-none resize-none transition-all text-gray-900 placeholder:text-gray-400"
+                    placeholder="Add agenda items, topics to discuss, or any notes about the meeting..."
+                    rows={4}
                   />
+                  <p className="text-xs text-gray-600 mt-1.5">
+                    Optional: Add details about what you'd like to discuss in this meeting
+                  </p>
+                </div>
+
+                {/* Chat Room Info */}
+                {chatRoom && (
+                  <div className="p-3 rounded-xl bg-purple-50 border-2 border-purple-200 flex items-center gap-3">
+                    <MessageSquare className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700">Chat Room</p>
+                      <p className="text-sm text-gray-900 font-semibold">
+                        {chatRoom.project_title || 'Project Discussion'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Info Banner */}
+                <div className="p-3 rounded-xl bg-amber-50 border-2 border-amber-200 flex items-start gap-3">
+                  <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-semibold">Meeting Link</p>
+                    <p className="text-amber-700 mt-1">
+                      A video call link will be generated and shared with both participants after scheduling.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t bg-gray-50 flex flex-col-reverse sm:flex-row gap-3">
-            <button onClick={onClose} className="px-5 py-3 rounded-xl border-2 border-gray-300 bg-white font-semibold">Cancel</button>
+          <div className="px-6 py-4 border-t-2 border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row gap-3">
+            <button 
+              onClick={onClose} 
+              className="px-6 py-3 rounded-xl border-2 border-gray-300 bg-white font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
             <button
               onClick={handleSubmit}
-              disabled={submitting || loading}
-              className="flex-1 px-5 py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2"
+              disabled={submitting || loading || !formData.start_time || !formData.end_time}
+              className="flex-1 px-6 py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
               style={{ background: `linear-gradient(135deg, ${primaryColor}, ${accentColor})` }}
             >
-              {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Video className="w-5 h-5" />}
-              Schedule Meeting
+              {submitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Scheduling...
+                </>
+              ) : (
+                <>
+                  <Video className="w-5 h-5" />
+                  Schedule Meeting
+                </>
+              )}
             </button>
           </div>
         </div>

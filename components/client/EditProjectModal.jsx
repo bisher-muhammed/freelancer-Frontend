@@ -10,7 +10,6 @@ import {
   Tag, 
   Clock, 
   Award, 
-  Users, 
   AlertCircle,
   Save,
   Plus
@@ -28,8 +27,6 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
     hourly_max_rate: project.hourly_max_rate || '',
     experience_level: project.experience_level || '',
     duration: project.duration || '',
-    assignment_type: project.assignment_type || 'single',
-    team_size: project.team_size || '',
     category: project.category?.id || project.category || '',
     skills_required: [],
     new_skill: '',
@@ -121,14 +118,6 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
       ...formData,
       [name]: value
     };
-    
-    // Clear team_size if switching to single freelancer
-    if (name === 'assignment_type' && value === 'single') {
-      updatedFormData.team_size = '';
-      if (errors.team_size) {
-        setErrors({ ...errors, team_size: '' });
-      }
-    }
 
     // Clear budget fields when switching budget type
     if (name === 'budget_type') {
@@ -318,17 +307,6 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
       newErrors.experience_level = 'Please select experience level';
     }
 
-    // Team validation
-    if (formData.assignment_type === 'team') {
-      if (!formData.team_size) {
-        newErrors.team_size = 'Team size is required for team projects';
-      } else if (parseInt(formData.team_size) <= 0) {
-        newErrors.team_size = 'Team size must be greater than 0';
-      }
-    } else if (formData.assignment_type === 'single' && formData.team_size) {
-      newErrors.team_size = 'Single freelancer projects cannot have a team size';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -351,8 +329,6 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
         budget_type: formData.budget_type,
         experience_level: formData.experience_level,
         duration: formData.duration,
-        assignment_type: formData.assignment_type,
-        team_size: formData.assignment_type === 'team' ? parseInt(formData.team_size) : null,
       };
 
       // Add budget data based on type
@@ -691,75 +667,6 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
                   </p>
                 )}
               </div>
-            </div>
-
-            {/* Assignment Type */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Assignment Type
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className={`flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  formData.assignment_type === 'single' ? 'border-blue-500 bg-blue-50' : 'border-blue-200 hover:border-blue-300'
-                }`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <input
-                      type="radio"
-                      name="assignment_type"
-                      value="single"
-                      checked={formData.assignment_type === 'single'}
-                      onChange={handleInputChange}
-                      className="w-5 h-5 text-blue-600"
-                    />
-                    <span className="font-bold text-gray-900">Single Freelancer</span>
-                  </div>
-                  <span className="text-gray-700 text-sm ml-8">One person for the entire project</span>
-                </label>
-
-                <label className={`flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  formData.assignment_type === 'team' ? 'border-blue-500 bg-blue-50' : 'border-blue-200 hover:border-blue-300'
-                }`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <input
-                      type="radio"
-                      name="assignment_type"
-                      value="team"
-                      checked={formData.assignment_type === 'team'}
-                      onChange={handleInputChange}
-                      className="w-5 h-5 text-blue-600"
-                    />
-                    <span className="font-bold text-gray-900">Team of Freelancers</span>
-                  </div>
-                  <span className="text-gray-700 text-sm ml-8">Multiple people working together</span>
-                </label>
-              </div>
-
-              {formData.assignment_type === 'team' && (
-                <div className="mt-4">
-                  <label className="block text-sm font-bold text-gray-900 mb-2">
-                    Team Size *
-                  </label>
-                  <input
-                    type="number"
-                    name="team_size"
-                    value={formData.team_size}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 3"
-                    min="1"
-                    className={`w-full md:w-1/2 px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                      errors.team_size ? 'border-red-300' : 'border-blue-200'
-                    }`}
-                  />
-                  {errors.team_size && <p className="text-red-600 text-sm font-bold mt-2 px-2">{errors.team_size}</p>}
-                </div>
-              )}
-              {formData.assignment_type === 'single' && formData.team_size && (
-                <p className="text-red-600 text-sm font-bold mt-2 px-2">
-                  Single freelancer projects cannot have a team size
-                </p>
-              )}
             </div>
 
             {/* Budget & Timeline */}

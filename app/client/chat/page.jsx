@@ -10,10 +10,10 @@ import {
   Clock, 
   ChevronRight, 
   Filter,
-  PlusCircle,
   AlertCircle,
   Bell,
-  Mail
+  Mail,
+  Inbox
 } from "lucide-react";
 
 export default function ClientChatList() {
@@ -63,18 +63,29 @@ export default function ClientChatList() {
   const formatLastSeen = (timestamp) => {
     if (!timestamp) return "";
     const date = new Date(timestamp);
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
   };
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6">
-        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900">Connection Error</h3>
-        <p className="text-gray-500 max-w-xs">{error}</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6 bg-white">
+        <div className="bg-red-50 rounded-full p-4 mb-4">
+          <AlertCircle className="w-12 h-12 text-red-600" />
+        </div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">Connection Error</h3>
+        <p className="text-gray-600 max-w-md mb-6">{error}</p>
         <button 
           onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
         >
           Try Again
         </button>
@@ -83,100 +94,99 @@ export default function ClientChatList() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8 min-h-screen bg-gray-50/50">
-      {/* Header Section with Unread Count */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4">
+    <div className="max-w-5xl mx-auto p-4 md:p-8 min-h-screen bg-white">
+      {/* Header Section */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Messages</h1>
-            <p className="text-gray-500 text-sm">Manage your project communications</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Messages</h1>
+            <p className="text-gray-600">Manage your project communications</p>
           </div>
           
-          {/* Unread Count Badge - Always visible */}
-          {!loading && (
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full">
-              <Mail className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-700">
-                {totalUnreadCount} unread
+          {/* Unread Count Badge */}
+          {!loading && totalUnreadCount > 0 && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm">
+              <Mail className="w-5 h-5" />
+              <span className="font-semibold">
+                {totalUnreadCount} unread message{totalUnreadCount !== 1 ? 's' : ''}
               </span>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Search and Filter Bar */}
-      <div className="relative mb-6">
-        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-gray-400" />
-        </div>
-        <input
-          type="text"
-          placeholder="Search by project or freelancer name..."
-          className="w-full pl-10 pr-12 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none text-sm shadow-sm"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <div className="absolute inset-y-0 right-3 flex items-center">
-          <button className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400">
-            <Filter className="w-4 h-4" />
-          </button>
+        {/* Search Bar */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by project or freelancer name..."
+            className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-gray-900 placeholder-gray-500 font-medium"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-4 flex items-center text-gray-400 hover:text-gray-600"
+            >
+              <span className="text-sm font-medium">Clear</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Stats Bar */}
       {!loading && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
           <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-600">
-              <span className="font-semibold">{filteredRooms.length}</span> 
-              {searchQuery ? ` of ${rooms.length}` : ''} 
-              {filteredRooms.length === 1 ? ' conversation' : ' conversations'}
+            <div className="text-sm font-medium text-gray-700">
+              Showing <span className="text-gray-900 font-bold">{filteredRooms.length}</span>
+              {searchQuery && rooms.length !== filteredRooms.length ? ` of ${rooms.length}` : ''} 
+              {' '}{filteredRooms.length === 1 ? 'conversation' : 'conversations'}
             </div>
             
-            {/* Unread Count in Filtered Results */}
-            {filteredUnreadCount > 0 && (
-              <div className="flex items-center gap-2 px-2.5 py-1 bg-red-50 border border-red-100 rounded-lg">
-                <Bell className="w-3.5 h-3.5 text-red-600" />
-                <span className="text-xs font-medium text-red-700">
-                  {filteredUnreadCount} unread in results
+            {/* Filtered Unread Count */}
+            {searchQuery && filteredUnreadCount > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-lg">
+                <Bell className="w-4 h-4 text-orange-600" />
+                <span className="text-sm font-semibold text-orange-700">
+                  {filteredUnreadCount} unread
                 </span>
               </div>
             )}
           </div>
-          
-          {searchQuery && filteredRooms.length === 0 && rooms.length > 0 && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
-              Clear search
-            </button>
-          )}
         </div>
       )}
 
-      {/* Chat List */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+      {/* Chat List Container */}
+      <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden shadow-sm">
         {loading ? (
-          <div className="divide-y divide-gray-100">
-            {[1, 2, 3].map((n) => <SkeletonRow key={n} />)}
+          <div className="divide-y divide-gray-200">
+            {[1, 2, 3, 4].map((n) => <SkeletonRow key={n} />)}
           </div>
         ) : filteredRooms.length > 0 ? (
           <>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-200">
               {filteredRooms.map((room) => (
                 <Link
                   key={room.id}
                   href={`/client/chat/${room.id}`}
-                  className="group flex items-center p-4 hover:bg-blue-50/50 transition-all cursor-pointer"
+                  className="group flex items-center p-5 hover:bg-blue-50 transition-all cursor-pointer relative"
                 >
-                  {/* Avatar / Icon */}
-                  <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center group-hover:from-blue-100 group-hover:to-blue-200 transition-colors">
-                      <User className="w-6 h-6 text-gray-500 group-hover:text-blue-600" />
+                  {/* Unread Indicator Bar */}
+                  {room.unread_count > 0 && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />
+                  )}
+
+                  {/* Avatar */}
+                  <div className="relative flex-shrink-0 ml-2">
+                    <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center border-2 border-blue-300 group-hover:border-blue-400 transition-all">
+                      <User className="w-7 h-7 text-blue-700" />
                     </div>
                     {room.unread_count > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[10px] font-bold border-2 border-white rounded-full flex items-center justify-center">
+                      <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 bg-red-600 text-white text-xs font-bold border-2 border-white rounded-full flex items-center justify-center shadow-sm">
                         {room.unread_count > 99 ? '99+' : room.unread_count}
                       </span>
                     )}
@@ -184,81 +194,83 @@ export default function ClientChatList() {
 
                   {/* Content */}
                   <div className="ml-4 flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                          {room.project_title || "Untitled Project"}
-                        </h3>
-                        {room.unread_count > 0 && (
-                          <span className="text-xs font-medium px-1.5 py-0.5 bg-red-100 text-red-700 rounded">
-                            {room.unread_count}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-gray-400 whitespace-nowrap ml-2 flex items-center">
-                        <Clock className="w-3 h-3 mr-1" />
+                    <div className="flex items-start justify-between mb-1">
+                      <h3 className={`font-bold text-base truncate group-hover:text-blue-600 transition-colors ${
+                        room.unread_count > 0 ? 'text-gray-900' : 'text-gray-800'
+                      }`}>
+                        {room.project_title || "Untitled Project"}
+                      </h3>
+                      <span className="text-xs font-medium text-gray-500 whitespace-nowrap ml-3 flex items-center">
+                        <Clock className="w-3.5 h-3.5 mr-1" />
                         {formatLastSeen(room.last_message?.created_at || room.last_message?.timestamp)}
                       </span>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-500 truncate max-w-[250px] md:max-w-md">
-                        <span className="font-medium text-gray-700">
-                          {room.freelancer?.name || "Freelancer"}
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-sm font-semibold ${
+                        room.unread_count > 0 ? 'text-gray-900' : 'text-gray-700'
+                      }`}>
+                        {room.freelancer?.name || "Freelancer"}
+                      </span>
+                      {room.unread_count > 0 && (
+                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">
+                          NEW
                         </span>
-                        {room.last_message && (
-                          <span className="mx-1.5 opacity-50">•</span>
-                        )}
-                        {room.last_message?.content || "No messages yet"}
-                      </p>
-                      <ChevronRight className="w-4 h-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
+                      )}
                     </div>
+                    
+                    <p className={`text-sm truncate max-w-[90%] ${
+                      room.unread_count > 0 ? 'text-gray-700 font-medium' : 'text-gray-600'
+                    }`}>
+                      {room.last_message?.content || "No messages yet"}
+                    </p>
                   </div>
+
+                  {/* Arrow */}
+                  <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ml-2" />
                 </Link>
               ))}
             </div>
             
             {/* Summary Footer */}
-            <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">
-                  Total unread in all conversations:
-                </span>
-                <span className="font-bold text-gray-900 text-base">
-                  {totalUnreadCount}
-                </span>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="p-12 text-center">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <MessageSquare className="w-8 h-8 text-gray-300" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900">No chats found</h3>
-            <p className="text-gray-500 text-sm mt-1">
-              {searchQuery ? "Try adjusting your search terms." : "Start a conversation by hiring a freelancer."}
-            </p>
-            
-            {/* Show unread count even when no chats exist */}
             {totalUnreadCount > 0 && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg inline-flex items-center gap-2">
-                <Bell className="w-5 h-5 text-blue-600" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-blue-700">
-                    {totalUnreadCount} unread message{totalUnreadCount > 1 ? 's' : ''} pending
-                  </p>
-                  <p className="text-xs text-blue-500">
-                    Messages will appear when you start a conversation
-                  </p>
+              <div className="border-t-2 border-gray-200 bg-gray-50 px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">
+                    Total unread messages across all conversations:
+                  </span>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg">
+                    <Mail className="w-4 h-4" />
+                    <span className="font-bold text-lg">
+                      {totalUnreadCount}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
+          </>
+        ) : (
+          <div className="p-16 text-center">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-5 border-2 border-gray-200">
+              {searchQuery ? (
+                <Search className="w-10 h-10 text-gray-400" />
+              ) : (
+                <Inbox className="w-10 h-10 text-gray-400" />
+              )}
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              {searchQuery ? "No matching conversations" : "No conversations yet"}
+            </h3>
+            <p className="text-gray-600 text-base max-w-md mx-auto mb-6">
+              {searchQuery 
+                ? "Try adjusting your search terms or clear the search to see all conversations." 
+                : "Start a conversation by hiring a freelancer for your project."}
+            </p>
             
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
               >
                 Clear Search
               </button>
@@ -273,14 +285,15 @@ export default function ClientChatList() {
 // --- Loading State Component ---
 function SkeletonRow() {
   return (
-    <div className="p-4 flex items-center animate-pulse">
-      <div className="w-12 h-12 bg-gray-100 rounded-xl" />
+    <div className="p-5 flex items-center animate-pulse">
+      <div className="w-14 h-14 bg-gray-200 rounded-full ml-2" />
       <div className="ml-4 flex-1">
-        <div className="flex justify-between items-center mb-2">
-          <div className="h-4 bg-gray-100 rounded w-1/3" />
-          <div className="h-3 bg-gray-50 rounded w-12" />
+        <div className="flex justify-between items-center mb-3">
+          <div className="h-5 bg-gray-200 rounded w-1/3" />
+          <div className="h-4 bg-gray-100 rounded w-16" />
         </div>
-        <div className="h-3 bg-gray-50 rounded w-1/2" />
+        <div className="h-4 bg-gray-100 rounded w-1/4 mb-2" />
+        <div className="h-4 bg-gray-100 rounded w-1/2" />
       </div>
     </div>
   );

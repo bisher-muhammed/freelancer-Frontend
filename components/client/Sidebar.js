@@ -55,6 +55,12 @@ export default function ClientSidebar({ onClose }) {
     },
 
     {
+      icon: Folder,
+      label: "completed projects",
+      href: "/client/client-completed-projects",
+    },
+
+    {
       icon: MessageSquare,
       label: "Meetings",
       href: "/client/meetings",

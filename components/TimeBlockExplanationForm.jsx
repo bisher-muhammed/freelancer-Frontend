@@ -108,7 +108,7 @@ const TimeBlockExplanationForm = ({
         
         // 2. If block has explanation, also update its status
         if (blockDetails?.explanation) {
-          await apiPrivate.patch(`/admin/time-blocks/${blockId}/explanation/review/`, {
+          await apiPrivate.patch(`/admin/billing-units/${blockId}/explanation/review/`, {
             admin_status: adminStatus,
             admin_note: adminNote.trim(),
           });

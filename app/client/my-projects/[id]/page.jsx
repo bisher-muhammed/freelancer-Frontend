@@ -61,9 +61,8 @@ export default function ProjectDetailPage() {
   };
 
   const handleEdit = () => {
-  setShowEditModal(true);
-};
-
+    setShowEditModal(true);
+  };
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this project?')) {
@@ -130,8 +129,7 @@ export default function ProjectDetailPage() {
       'less_than_1_month': 'Less than 1 month',
       '1_3_months': '1-3 months',
       '3_6_months': '3-6 months',
-      '6_months_1_year': '6 months - 1 year',
-      'more_than_1_year': 'More than 1 year'
+      'more_than_6_months': 'More than 6 months'
     };
     return durationMap[duration] || duration;
   };
@@ -212,11 +210,10 @@ export default function ProjectDetailPage() {
               <button
                 onClick={handleEdit}
                 className="flex items-center gap-2 px-4 py-2 text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors font-medium"
-                >
+              >
                 <Edit className="h-4 w-4" />
                 Edit
-                </button>
-
+              </button>
               <button
                 onClick={handleDelete}
                 className="flex items-center gap-2 px-4 py-2 text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors font-medium"
@@ -268,7 +265,7 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              {/* Key Info Cards */}
+              {/* Key Info Cards - Updated without team_size */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -301,10 +298,10 @@ export default function ProjectDetailPage() {
 
                 <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <Users className="h-5 w-5 text-amber-600" />
-                    <span className="text-xs font-semibold text-amber-700 uppercase">Type</span>
+                    <Tag className="h-5 w-5 text-amber-600" />
+                    <span className="text-xs font-semibold text-amber-700 uppercase">Category</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900 capitalize">{project.assignment_type}</p>
+                  <p className="text-xl font-bold text-gray-900">{project.category?.name || 'N/A'}</p>
                 </div>
               </div>
 
@@ -336,7 +333,7 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* Additional Details */}
+            {/* Additional Details - Updated without team_size and assignment_type */}
             <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
               <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                 <Target className="h-5 w-5" />
@@ -345,14 +342,14 @@ export default function ProjectDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InfoCard
                   icon={<Calendar className="h-5 w-5" />}
-                  title="Timeline"
-                  value={`${getDurationLabel(project.duration)} • Posted ${formatDate(project.created_at)}`}
+                  title="Posted On"
+                  value={formatDate(project.created_at)}
                   color="text-blue-600"
                 />
                 <InfoCard
-                  icon={<Users className="h-5 w-5" />}
-                  title="Team Size"
-                  value={project.team_size ? `${project.team_size} members` : 'Flexible'}
+                  icon={<Clock className="h-5 w-5" />}
+                  title="Duration"
+                  value={getDurationLabel(project.duration)}
                   color="text-purple-600"
                 />
                 <InfoCard
@@ -362,9 +359,9 @@ export default function ProjectDetailPage() {
                   color="text-green-600"
                 />
                 <InfoCard
-                  icon={<BarChart3 className="h-5 w-5" />}
-                  title="Assignment Type"
-                  value={project.assignment_type}
+                  icon={<Award className="h-5 w-5" />}
+                  title="Experience Level"
+                  value={project.experience_level?.charAt(0).toUpperCase() + project.experience_level?.slice(1)}
                   color="text-amber-600"
                 />
               </div>
@@ -422,7 +419,7 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* Requirements */}
+            {/* Requirements - Updated without team_size and assignment_type */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Requirements</h3>
               <div className="space-y-3">
@@ -435,26 +432,26 @@ export default function ProjectDetailPage() {
                   <span className="text-gray-700">Duration: <span className="font-semibold text-gray-900">{getDurationLabel(project.duration)}</span></span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
-                  <Users className="h-4 w-4 text-amber-600" />
-                  <span className="text-gray-700">Type: <span className="font-semibold text-gray-900 capitalize">{project.assignment_type}</span></span>
+                  <Tag className="h-4 w-4 text-amber-600" />
+                  <span className="text-gray-700">Category: <span className="font-semibold text-gray-900">{project.category?.name || 'N/A'}</span></span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-       {showEditModal && (
-  <EditProjectModal
-    project={project}
-    onClose={() => setShowEditModal(false)}
-    onUpdated={(updatedProject) => {
-      setProject(updatedProject);
-      setShowEditModal(false);
-      // Optionally show success message
-      alert('Project updated successfully!');
-    }}
-  />
-)}
+        {showEditModal && (
+          <EditProjectModal
+            project={project}
+            onClose={() => setShowEditModal(false)}
+            onUpdated={(updatedProject) => {
+              setProject(updatedProject);
+              setShowEditModal(false);
+              // Optionally show success message
+              alert('Project updated successfully!');
+            }}
+          />
+        )}
 
         {/* Bottom Navigation */}
         <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-between items-center">
@@ -473,8 +470,6 @@ export default function ProjectDetailPage() {
         </div>
       </div>
     </div>
-
-    
   );
 }
 
@@ -491,8 +486,6 @@ function InfoCard({ icon, title, value, color }) {
         <h4 className="text-sm font-medium text-gray-700">{title}</h4>
       </div>
       <p className="text-gray-900 font-semibold">{value}</p>
-      
     </div>
-
   );
 }
