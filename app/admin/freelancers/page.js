@@ -38,13 +38,10 @@ export default function FreelancersPage() {
   // Helper function to get full media URLs
   const getFullMediaUrl = (path) => {
     if (!path) return null;
-    
     if (path.startsWith('http')) return path;
-    
     if (path.startsWith('/media/')) {
       return `http://localhost:8000${path}`;
     }
-    
     return `http://localhost:8000/media/${path}`;
   };
 
@@ -80,15 +77,14 @@ export default function FreelancersPage() {
       const response = await apiPrivate.post(`/freelancers/${userId}/verify/`);
       setFreelancer(prev => ({ ...prev, is_verified: true }));
       setSuccessMessage(response.data.detail || "Freelancer verified successfully!");
-      
       setTimeout(() => {
         setSuccessMessage("");
       }, 5000);
     } catch (err) {
       console.error("Failed to verify freelancer:", err);
-      const errorMsg = err.response?.data?.detail || 
-                      err.response?.data?.error || 
-                      err.message || 
+      const errorMsg = err.response?.data?.detail ||
+                      err.response?.data?.error ||
+                      err.message ||
                       "Failed to verify freelancer. Please try again.";
       setError(errorMsg);
     } finally {
@@ -101,7 +97,7 @@ export default function FreelancersPage() {
 
     setDeleting(true);
     setError("");
-    
+
     try {
       await apiPrivate.delete(`/users/${freelancer.id}/`);
       setSuccessMessage("Freelancer deleted successfully!");
@@ -110,9 +106,9 @@ export default function FreelancersPage() {
       }, 2000);
     } catch (err) {
       console.error("Failed to delete freelancer:", err);
-      const errorMsg = err.response?.data?.detail || 
-                      err.response?.data?.error || 
-                      err.message || 
+      const errorMsg = err.response?.data?.detail ||
+                      err.response?.data?.error ||
+                      err.message ||
                       "Failed to delete freelancer. Please try again.";
       setError(errorMsg);
     } finally {
@@ -149,6 +145,7 @@ export default function FreelancersPage() {
   const getSkillIcon = (skillName) => {
     const skillIcons = {
       'JavaScript': Code,
+      'javascript': Code,
       'React': Layout,
       'Next.js': Layout,
       'HTML': Code,
@@ -156,7 +153,6 @@ export default function FreelancersPage() {
       'MongoDB': Database,
       'Figma': Figma,
     };
-    
     return skillIcons[skillName] || Code;
   };
 
@@ -171,13 +167,18 @@ export default function FreelancersPage() {
     return levels[level] || 'Not specified';
   };
 
+  // Helper: get first category name from categories array
+  const getFirstCategoryName = (skill) => {
+    return skill?.categories?.[0]?.name || null;
+  };
+
   const handleBackClick = () => {
     router.push('/admin/users');
   };
 
   const getStats = () => {
     if (!freelancer) return [];
-    
+
     return [
       {
         label: "Hourly Rate",
@@ -357,14 +358,14 @@ export default function FreelancersPage() {
                   }}
                 />
               ) : (
-                <div 
+                <div
                   className="w-32 h-32 md:w-40 md:h-40 rounded-xl flex items-center justify-center border-4 border-white shadow-lg"
                   style={{ backgroundColor: primaryLight }}
                 >
                   <User className="h-16 w-16 md:h-20 md:w-20" style={{ color: primaryColor }} />
                 </div>
               )}
-              
+
               {/* Verification Badge */}
               <div className={`absolute -top-2 -right-2 p-2 rounded-full shadow-lg ${freelancer.is_verified ? 'bg-green-500' : 'bg-yellow-500'}`}>
                 {freelancer.is_verified ? (
@@ -385,8 +386,8 @@ export default function FreelancersPage() {
                     {freelancer.username || "Unnamed User"}
                   </h1>
                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-                    ${freelancer.is_verified 
-                      ? 'bg-green-100 text-green-800' 
+                    ${freelancer.is_verified
+                      ? 'bg-green-100 text-green-800'
                       : 'bg-yellow-100 text-yellow-800'}`}>
                     {freelancer.is_verified ? "Verified" : "Unverified"}
                   </span>
@@ -394,15 +395,15 @@ export default function FreelancersPage() {
                     ID: {freelancer.id}
                   </span>
                 </div>
-                
+
                 <div className="text-lg md:text-xl font-semibold text-gray-700 mb-3">
                   {freelancer.title || "No title specified"}
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
                   <div className="flex items-center">
                     <Mail className="h-4 w-4 mr-2" />
-                    <a 
+                    <a
                       href={`mailto:${freelancer.email}`}
                       className="hover:text-blue-600 transition-colors"
                     >
@@ -412,7 +413,7 @@ export default function FreelancersPage() {
                   {freelancer.contact_number && (
                     <div className="flex items-center">
                       <Phone className="h-4 w-4 mr-2" />
-                      <a 
+                      <a
                         href={`tel:${freelancer.contact_number}`}
                         className="hover:text-blue-600 transition-colors"
                       >
@@ -425,7 +426,7 @@ export default function FreelancersPage() {
                     Joined {formatDate(freelancer.created_at)}
                   </div>
                 </div>
-                
+
                 {/* Bio */}
                 {freelancer.bio && (
                   <div className="mt-4">
@@ -458,7 +459,7 @@ export default function FreelancersPage() {
                     )}
                   </button>
                 )}
-                
+
                 {freelancer.resume && (
                   <a
                     href={getFullMediaUrl(freelancer.resume)}
@@ -470,7 +471,7 @@ export default function FreelancersPage() {
                     View Resume
                   </a>
                 )}
-                
+
                 <a
                   href={`mailto:${freelancer.email}`}
                   className="inline-flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-all duration-200 text-sm font-medium"
@@ -540,8 +541,8 @@ export default function FreelancersPage() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center px-4 py-3 text-sm font-medium rounded-t-lg transition-all duration-200 whitespace-nowrap ${
-                    activeTab === tab.id 
-                      ? 'text-white' 
+                    activeTab === tab.id
+                      ? 'text-white'
                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                   }`}
                   style={{
@@ -573,6 +574,7 @@ export default function FreelancersPage() {
                 <div className="space-y-4">
                   {freelancer.skills_read?.map((skillItem, index) => {
                     const SkillIcon = getSkillIcon(skillItem.skill.name);
+                    const categoryName = getFirstCategoryName(skillItem.skill);
                     return (
                       <div
                         key={index}
@@ -584,7 +586,9 @@ export default function FreelancersPage() {
                           </div>
                           <div className="flex-1">
                             <div className="font-medium text-gray-900">{skillItem.skill.name}</div>
-                            <div className="text-sm text-gray-500">{skillItem.skill.category.name}</div>
+                            {categoryName && (
+                              <div className="text-sm text-gray-500">{categoryName}</div>
+                            )}
                           </div>
                           <div className="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700">
                             {getProficiencyLevel(skillItem.level)}
@@ -597,8 +601,8 @@ export default function FreelancersPage() {
                               <div
                                 key={level}
                                 className={`h-2 w-2 rounded-full mx-0.5 ${
-                                  level <= skillItem.level 
-                                    ? 'bg-green-500' 
+                                  level <= skillItem.level
+                                    ? 'bg-green-500'
                                     : 'bg-gray-200'
                                 }`}
                               />
@@ -695,7 +699,7 @@ export default function FreelancersPage() {
                       )}
                     </button>
                   )}
-                  
+
                   <a
                     href={`mailto:${freelancer.email}`}
                     className="w-full inline-flex items-center justify-center px-4 py-2.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors duration-200 text-sm font-medium"
@@ -703,7 +707,7 @@ export default function FreelancersPage() {
                     <Send className="h-4 w-4 mr-2" />
                     Send Email
                   </a>
-                  
+
                   {freelancer.resume && (
                     <a
                       href={getFullMediaUrl(freelancer.resume)}
@@ -732,12 +736,13 @@ export default function FreelancersPage() {
             </div>
             <div className="space-y-6">
               {freelancer.categories_names?.map((category, catIndex) => {
+                // FIX: use categories array with .some() instead of category.name
                 const categorySkills = freelancer.skills_read?.filter(
-                  skillItem => skillItem.skill.category.name === category
+                  skillItem => skillItem.skill.categories?.some(cat => cat.name === category)
                 );
-                
+
                 if (!categorySkills || categorySkills.length === 0) return null;
-                
+
                 return (
                   <div key={catIndex} className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -767,8 +772,8 @@ export default function FreelancersPage() {
                                   <div
                                     key={level}
                                     className={`h-2 w-2 rounded-full mx-0.5 ${
-                                      level <= skillItem.level 
-                                        ? 'bg-green-500' 
+                                      level <= skillItem.level
+                                        ? 'bg-green-500'
                                         : 'bg-gray-200'
                                     }`}
                                   />
