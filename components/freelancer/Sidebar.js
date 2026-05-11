@@ -44,7 +44,6 @@ export default function FreelancerSidebar({ onClose }) {
       icon: FileText,
       label: "My Proposals",
       href: "/freelancer/proposals",
-      badge: 5,
       description: "Your submitted proposals",
     },
 
@@ -52,7 +51,6 @@ export default function FreelancerSidebar({ onClose }) {
       icon: FileText,
       label: "Invoices",
       href: "/freelancer/invoices",
-      badge: 5,
       description: "Your submitted proposals",
     },
     {
@@ -66,7 +64,6 @@ export default function FreelancerSidebar({ onClose }) {
       icon: Folder,
       label: "Offers",
       href: "/freelancer/offers-list",
-      badge: 3,
       description: "Offers",
     },
 
@@ -94,7 +91,6 @@ export default function FreelancerSidebar({ onClose }) {
       icon: MessageSquare,
       label: "Meetings",
       href: "/freelancer/meetings",
-      badge: 12,
       description: "Client communications",
     },
 
@@ -102,7 +98,6 @@ export default function FreelancerSidebar({ onClose }) {
       icon: MessageSquare,
       label: "Messages",
       href: "/freelancer/chat",
-      badge: 12,
       description: "communications",
     },
     
@@ -120,12 +115,7 @@ export default function FreelancerSidebar({ onClose }) {
       description: "freelancer work flow",
     },
     
-    {
-      icon: Calendar,
-      label: "Schedule",
-      href: "/freelancer/schedule",
-      description: "Manage your calendar",
-    },
+    
   ];
 
   const accountItems = [
@@ -145,7 +135,6 @@ export default function FreelancerSidebar({ onClose }) {
       icon: Bell,
       label: "Notifications",
       href: "/freelancer/notifications",
-      badge: 3,
       description: "Alerts & updates",
     },
   ];
@@ -287,19 +276,6 @@ export default function FreelancerSidebar({ onClose }) {
         </div>
       </nav>
 
-      {/* Footer/User Info */}
-      <div className="p-4 border-t border-gray-200 mt-auto">
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-            <span className="text-white font-bold">JD</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm text-gray-900 truncate">John Doe</p>
-            <p className="text-xs text-gray-500 truncate">Premium Freelancer</p>
-          </div>
-          <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-        </div>
-      </div>
     </aside>
   );
 }

@@ -243,12 +243,12 @@ export default function AdminProjectDetailPage() {
   };
 
   const formatCurrency = (amount) => {
-    if (!amount && amount !== 0) return '₹0';
+    if (!amount && amount !== 0) return '$0';
     const numAmount = Number(amount);
-    if (isNaN(numAmount)) return '₹0';
-    return new Intl.NumberFormat('en-IN', {
+    if (isNaN(numAmount)) return '$0';
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(numAmount);

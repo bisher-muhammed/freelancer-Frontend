@@ -399,7 +399,7 @@ export default function SubscriptionsPage() {
                     <div>
                       <p className="text-gray-400 text-sm">Active Plans</p>
                       <p className="text-3xl font-bold text-white">
-                        {Object.keys(groupedSubscriptions).length}
+                        {Object.keys(userSubscriptions).length}
                       </p>
                     </div>
                   </div>

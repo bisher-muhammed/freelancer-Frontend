@@ -135,22 +135,6 @@ export default function FreelancerHeader({ onMenuClick }) {
                       <User className="h-4 w-4" />
                       Profile Settings
                     </Link>
-                    <Link
-                      href="/freelancer/settings"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      <Settings className="h-4 w-4" />
-                      Account Settings
-                    </Link>
-                    <Link
-                      href="/freelancer/earnings"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      Earnings
-                    </Link>
                   </div>
 
                   <div className="border-t border-gray-100 pt-2">
@@ -210,22 +194,6 @@ export default function FreelancerHeader({ onMenuClick }) {
               >
                 <User className="h-5 w-5" />
                 Profile Settings
-              </Link>
-              <Link
-                href="/freelancer/settings"
-                className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Settings className="h-5 w-5" />
-                Account Settings
-              </Link>
-              <Link
-                href="/freelancer/earnings"
-                className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <DollarSign className="h-5 w-5" />
-                Earnings
               </Link>
               <button
                 onClick={() => {

@@ -23,7 +23,7 @@ export default function CompletedProjectsPage() {
     const fetchProjects = async () => {
       try {
         setLoading(true);
-        const res = await apiPrivate.get('completed-projects/');
+        const res = await apiPrivate.get('freelancer/completed-projects/');
         // Handle both paginated {results:[...]} and plain array responses
         const data = Array.isArray(res.data) ? res.data : (res.data?.results ?? []);
         setProjects(data);

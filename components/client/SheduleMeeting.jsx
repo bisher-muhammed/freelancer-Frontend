@@ -1,21 +1,21 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import DatePicker from "react-datepicker";
-import { addMinutes, isAfter, format } from "date-fns";
+import { isAfter, format } from "date-fns";
 import { apiPrivate } from "@/lib/apiPrivate";
 import "react-datepicker/dist/react-datepicker.css";
-import { 
-  X, Calendar, Clock, Video, AlertCircle, 
-  CheckCircle, Loader2, Info, Briefcase, MessageSquare,
-  User, Mail, MapPin
+import {
+  X, Calendar, Clock, Video, AlertCircle,
+  CheckCircle, Loader2, Info, MessageSquare,
 } from "lucide-react";
 
-export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId }) {
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [chatRoom, setChatRoom] = useState(null);
+// proposalStatus: pass the current proposal.status string from the parent
+export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId, proposalStatus }) {
+  const [loading, setLoading]         = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
+  const [error, setError]             = useState(null);
+  const [success, setSuccess]         = useState(null);
+  const [chatRoom, setChatRoom]       = useState(null);
   const [freelancerInfo, setFreelancerInfo] = useState(null);
   const fetchedRef = useRef(false);
 
@@ -23,14 +23,38 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
     meeting_type: 'interview',
     start_time: null,
     end_time: null,
-    notes: ''
+    notes: '',
   });
 
-  const primaryColor = '#227C70';
-  const accentColor = '#2F9D92';
-  const lightBg = '#F0F9F8';
-  const borderColor = '#D1ECEA';
+  const primaryColor  = '#227C70';
+  const accentColor   = '#2F9D92';
+  const lightBg       = '#F0F9F8';
+  const borderColor   = '#D1ECEA';
 
+  const normalizedProposalStatus = proposalStatus?.toLowerCase() || '';
+
+  // ── Derived guard ────────────────────────────────────────────────────────
+  // True when the selected type is allowed given the current proposal status.
+  const canScheduleInterview =
+    formData.meeting_type !== 'interview' || normalizedProposalStatus === 'shortlisted';
+
+  const canScheduleReview =
+    formData.meeting_type !== 'review' || normalizedProposalStatus === 'accepted';
+
+  const meetingTypeAllowed = canScheduleInterview && canScheduleReview;
+
+  // Human-readable reason shown inline so the user knows why submit is blocked.
+  const meetingTypeBlockReason = (() => {
+    if (!meetingTypeAllowed) {
+      if (formData.meeting_type === 'interview')
+        return `Interview meetings require the proposal to be shortlisted. Current status: "${proposalStatus || 'unknown'}".`;
+      if (formData.meeting_type === 'review')
+        return `Review meetings require the proposal to be accepted. Current status: "${proposalStatus || 'unknown'}".`;
+    }
+    return null;
+  })();
+
+  // ── Reset on close ───────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen && freelancerId && !fetchedRef.current) {
       fetchedRef.current = true;
@@ -42,12 +66,7 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
       setFreelancerInfo(null);
       setError(null);
       setSuccess(null);
-      setFormData({
-        meeting_type: 'interview',
-        start_time: null,
-        end_time: null,
-        notes: ''
-      });
+      setFormData({ meeting_type: 'interview', start_time: null, end_time: null, notes: '' });
     }
   }, [isOpen, freelancerId]);
 
@@ -84,22 +103,47 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
     }
   };
 
+  // ── Validation ───────────────────────────────────────────────────────────
   const validateForm = () => {
+    // Block mismatched meeting type before hitting the API
+    if (!meetingTypeAllowed) {
+      setError(meetingTypeBlockReason);
+      return false;
+    }
     if (!formData.start_time || !formData.end_time) {
-      setError('Please select both start and end times');
+      setError('Please select both start and end times.');
       return false;
     }
     if (!isAfter(formData.start_time, new Date())) {
-      setError('Start time must be in the future');
+      setError('Start time must be in the future.');
       return false;
     }
     if (!isAfter(formData.end_time, formData.start_time)) {
-      setError('End time must be after start time');
+      setError('End time must be after start time.');
       return false;
     }
     return true;
   };
 
+  const getApiErrorMessage = (err) => {
+    const data = err?.response?.data;
+    if (!data) return err?.message || 'Failed to schedule meeting.';
+    if (typeof data === 'string') return data;
+    if (Array.isArray(data)) return data.join(', ');
+    if (data.detail) return data.detail;
+    if (data.non_field_errors) return Array.isArray(data.non_field_errors)
+      ? data.non_field_errors.join(', ') : data.non_field_errors;
+    if (data.__all__) return Array.isArray(data.__all__)
+      ? data.__all__.join(', ') : data.__all__;
+    if (data.message) return data.message;
+    if (data.error)   return data.error;
+    const fieldMessages = Object.values(data)
+      .flatMap(v => (Array.isArray(v) ? v : [v]))
+      .filter(Boolean);
+    return fieldMessages.length ? fieldMessages.join(', ') : err?.message || 'Failed to schedule meeting.';
+  };
+
+  // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -109,55 +153,48 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
 
       const payload = {
         meeting_type: formData.meeting_type,
-        start_time: formData.start_time.toISOString(),
-        end_time: formData.end_time.toISOString(),
-        notes: formData.notes.trim(),
-        freelancer: parseInt(freelancerId),
-        chat_room: chatRoom?.id,
-        proposal: proposalId ? parseInt(proposalId) : undefined
+        start_time:   formData.start_time.toISOString(),
+        end_time:     formData.end_time.toISOString(),
+        notes:        formData.notes.trim(),
+        freelancer:   parseInt(freelancerId),
+        chat_room:    chatRoom?.id,
+        proposal:     proposalId ? parseInt(proposalId) : undefined,
       };
 
       await apiPrivate.post('meetings/', payload);
       setSuccess('Meeting scheduled successfully!');
-      
-      setTimeout(() => {
-        setSuccess(null);
-        onClose();
-      }, 2000);
+      setTimeout(() => { setSuccess(null); onClose(); }, 2000);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to schedule meeting.');
+      console.error('Meeting scheduling error:', err);
+      setError(getApiErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
   };
 
+  // ── Helpers ──────────────────────────────────────────────────────────────
   const calculateDuration = () => {
     if (!formData.start_time || !formData.end_time) return null;
     const diffMs = formData.end_time - formData.start_time;
     if (diffMs <= 0) return null;
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const hours   = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
-  const formatDisplayDate = (date) => {
-    if (!date) return 'Not selected';
-    return format(date, 'EEEE, MMMM d, yyyy');
-  };
-
-  const formatDisplayTime = (date) => {
-    if (!date) return 'Not selected';
-    return format(date, 'h:mm a');
-  };
+  const formatDisplayDate = (date) => date ? format(date, 'EEEE, MMMM d, yyyy') : 'Not selected';
+  const formatDisplayTime = (date) => date ? format(date, 'h:mm a') : 'Not selected';
 
   if (!isOpen) return null;
 
+  // Submit button is disabled when: submitting, loading, times not picked, or meeting type not allowed
+  const submitDisabled = submitting || loading || !formData.start_time || !formData.end_time || !meetingTypeAllowed;
+
   return (
-    <div className="fixed inset-0 z-9999 overflow-y-auto mt-10">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto mt-10">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm transition-opacity" onClick={onClose} />
 
-        {/* Custom Styling to match Screenshot UI */}
         <style jsx global>{`
           .react-datepicker-wrapper { width: 100%; }
           .date-input-custom {
@@ -171,18 +208,13 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
             background-color: white;
             color: #111827;
           }
-          .date-input-custom::placeholder {
-            color: #9CA3AF;
-          }
-          .date-input-custom:focus {
-            border-color: ${primaryColor};
-            ring: 2px solid ${primaryColor}33;
-          }
+          .date-input-custom::placeholder { color: #9CA3AF; }
+          .date-input-custom:focus { border-color: ${primaryColor}; }
           .react-datepicker {
             font-family: inherit;
             border-radius: 1rem;
             border: 1px solid #E5E7EB;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
           }
           .react-datepicker__header {
             background-color: white;
@@ -190,21 +222,15 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
             border-top-left-radius: 1rem;
             border-top-right-radius: 1rem;
           }
-          .react-datepicker__day--selected {
-            background-color: ${primaryColor} !important;
-            border-radius: 0.5rem;
-          }
-          .react-datepicker__time-list-item {
-            color: #111827;
-          }
+          .react-datepicker__day--selected { background-color: ${primaryColor} !important; border-radius: 0.5rem; }
+          .react-datepicker__time-list-item,
           .react-datepicker__current-month,
           .react-datepicker__day-name,
-          .react-datepicker__day {
-            color: #111827;
-          }
+          .react-datepicker__day { color: #111827; }
         `}</style>
 
         <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full relative">
+
           {/* Header */}
           <div className="px-6 pt-6 pb-4" style={{ backgroundColor: lightBg, borderBottom: `2px solid ${borderColor}` }}>
             <div className="flex items-center justify-between">
@@ -225,13 +251,15 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
           </div>
 
           <div className="px-6 py-5 bg-white">
+            {/* Success */}
             {success && (
               <div className="mb-5 p-4 rounded-xl bg-green-50 border-2 border-green-200 flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <span className="text-green-700 font-semibold">{success}</span>
               </div>
             )}
-            
+
+            {/* API / validation error */}
             {error && (
               <div className="mb-5 p-4 rounded-xl bg-red-50 border-2 border-red-200 flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -246,7 +274,8 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
               </div>
             ) : (
               <div className="space-y-5">
-                {/* Freelancer Info Card */}
+
+                {/* Freelancer card */}
                 {freelancerInfo && (
                   <div className="p-4 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 border-2 border-teal-100">
                     <div className="flex items-center gap-3">
@@ -255,51 +284,65 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
                       </div>
                       <div className="flex-1">
                         <h4 className="font-bold text-gray-900">
-                          {freelancerInfo.user?.first_name && freelancerInfo.user?.last_name 
+                          {freelancerInfo.user?.first_name && freelancerInfo.user?.last_name
                             ? `${freelancerInfo.user.first_name} ${freelancerInfo.user.last_name}`
                             : freelancerInfo.user?.username || 'Freelancer'}
                         </h4>
-                        <p className="text-sm text-gray-600">
-                          {freelancerInfo.title || 'Freelance Professional'}
-                        </p>
+                        <p className="text-sm text-gray-600">{freelancerInfo.title || 'Freelance Professional'}</p>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Meeting Type */}
+                {/* Meeting type selector */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-800 mb-3">
-                    Meeting Type
-                  </label>
+                  <label className="block text-sm font-bold text-gray-800 mb-3">Meeting Type</label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { type: 'interview', label: 'Interview', description: 'Initial screening call' },
-                      { type: 'review', label: 'Review', description: 'Project feedback session' }
-                    ].map(({ type, label, description }) => (
+                      { type: 'interview', label: 'Interview', description: 'Initial screening call',  allowed: normalizedProposalStatus === 'shortlisted' },
+                      { type: 'review',    label: 'Review',    description: 'Project feedback session', allowed: normalizedProposalStatus === 'accepted'    },
+                    ].map(({ type, label, description, allowed }) => (
                       <button
                         key={type}
                         type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, meeting_type: type }))}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${
-                          formData.meeting_type === type 
-                            ? 'border-teal-600 bg-teal-50 shadow-md' 
+                        onClick={() => {
+                          if (!allowed) return;
+                          setFormData(prev => ({ ...prev, meeting_type: type }));
+                          setError(null);
+                        }}
+                        disabled={!allowed}
+                        className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                          formData.meeting_type === type
+                            ? 'border-teal-600 bg-teal-50 shadow-md'
                             : 'border-gray-200 hover:border-gray-300'
-                        }`}
+                        } ${!allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={!allowed ? `Not available — proposal must be ${type === 'interview' ? 'shortlisted' : 'accepted'}` : ''}
                       >
                         <p className="font-bold text-gray-900">{label}</p>
                         <p className="text-xs text-gray-500 mt-1">{description}</p>
+                        {!allowed && (
+                          <span className="absolute top-2 right-2 text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                            Unavailable
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
+
+                  {/* Inline warning when the selected type is blocked */}
+                  {meetingTypeBlockReason && (
+                    <div className="mt-2 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                      <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-800 font-medium">{meetingTypeBlockReason}</p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Date and Time Pickers */}
+                {/* Date & time pickers */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-2">
-                      <Calendar className="w-4 h-4 text-teal-600" /> 
-                      Start Date & Time
+                      <Calendar className="w-4 h-4 text-teal-600" />Start Date & Time
                     </label>
                     <DatePicker
                       selected={formData.start_time}
@@ -314,8 +357,7 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-2">
-                      <Clock className="w-4 h-4 text-teal-600" /> 
-                      End Date & Time
+                      <Clock className="w-4 h-4 text-teal-600" />End Date & Time
                     </label>
                     <DatePicker
                       selected={formData.end_time}
@@ -330,35 +372,29 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
                   </div>
                 </div>
 
-                {/* Meeting Summary - Visible Text Display */}
+                {/* Meeting summary */}
                 {(formData.start_time || formData.end_time) && (
                   <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 space-y-3">
                     <h4 className="font-bold text-gray-900 flex items-center gap-2">
-                      <Info className="w-4 h-4 text-blue-600" />
-                      Meeting Details
+                      <Info className="w-4 h-4 text-blue-600" />Meeting Details
                     </h4>
-                    
                     <div className="space-y-2 text-sm">
                       <div className="flex items-start gap-2">
                         <Calendar className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                         <div>
                           <p className="font-medium text-gray-700">Date</p>
-                          <p className="text-gray-900 font-semibold">
-                            {formatDisplayDate(formData.start_time)}
-                          </p>
+                          <p className="text-gray-900 font-semibold">{formatDisplayDate(formData.start_time)}</p>
                         </div>
                       </div>
-                      
                       <div className="flex items-start gap-2">
                         <Clock className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                         <div>
                           <p className="font-medium text-gray-700">Time</p>
                           <p className="text-gray-900 font-semibold">
-                            {formatDisplayTime(formData.start_time)} - {formatDisplayTime(formData.end_time)}
+                            {formatDisplayTime(formData.start_time)} – {formatDisplayTime(formData.end_time)}
                           </p>
                         </div>
                       </div>
-                      
                       {calculateDuration() && (
                         <div className="flex items-center justify-between pt-2 mt-2 border-t border-blue-200">
                           <span className="font-medium text-gray-700">Duration</span>
@@ -369,11 +405,9 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
                   </div>
                 )}
 
-                {/* Notes/Agenda */}
+                {/* Notes */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-800 mb-2">
-                    Meeting Notes / Agenda
-                  </label>
+                  <label className="block text-sm font-bold text-gray-800 mb-2">Meeting Notes / Agenda</label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))}
@@ -386,20 +420,18 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
                   </p>
                 </div>
 
-                {/* Chat Room Info */}
+                {/* Chat room */}
                 {chatRoom && (
                   <div className="p-3 rounded-xl bg-purple-50 border-2 border-purple-200 flex items-center gap-3">
                     <MessageSquare className="w-5 h-5 text-purple-600 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700">Chat Room</p>
-                      <p className="text-sm text-gray-900 font-semibold">
-                        {chatRoom.project_title || 'Project Discussion'}
-                      </p>
+                      <p className="text-sm text-gray-900 font-semibold">{chatRoom.project_title || 'Project Discussion'}</p>
                     </div>
                   </div>
                 )}
 
-                {/* Info Banner */}
+                {/* Info banner */}
                 <div className="p-3 rounded-xl bg-amber-50 border-2 border-amber-200 flex items-start gap-3">
                   <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-amber-800">
@@ -415,28 +447,22 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
 
           {/* Footer */}
           <div className="px-6 py-4 border-t-2 border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row gap-3">
-            <button 
-              onClick={onClose} 
+            <button
+              onClick={onClose}
               className="px-6 py-3 rounded-xl border-2 border-gray-300 bg-white font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
-              disabled={submitting || loading || !formData.start_time || !formData.end_time}
+              disabled={submitDisabled}
               className="flex-1 px-6 py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
               style={{ background: `linear-gradient(135deg, ${primaryColor}, ${accentColor})` }}
             >
               {submitting ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Scheduling...
-                </>
+                <><Loader2 className="w-5 h-5 animate-spin" />Scheduling...</>
               ) : (
-                <>
-                  <Video className="w-5 h-5" />
-                  Schedule Meeting
-                </>
+                <><Video className="w-5 h-5" />Schedule Meeting</>
               )}
             </button>
           </div>

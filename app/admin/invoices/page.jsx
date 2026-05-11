@@ -74,11 +74,7 @@ const AdminInvoicesPage = () => {
           total_revenue: statsRes.data.total_gross || 0,
           paid_invoices_count: statsRes.data.invoice_count || 0,
           pending_amount: statsRes.data.platform_fee || 0,
-          net_to_freelancers: statsRes.data.total_net_paid_to_freelancers || 0,
-          revenue_change: 12.5,
-          paid_invoices_change: 8.2,
-          pending_change: -3.1,
-          net_change: 15.7
+          net_to_freelancers: statsRes.data.total_net_paid_to_freelancers || 0
         };
         setStats(statsData);
       } catch (statsErr) {
@@ -154,9 +150,9 @@ const AdminInvoicesPage = () => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(amount || 0);
@@ -355,8 +351,6 @@ const AdminInvoicesPage = () => {
               iconColor="text-emerald-600"
               title="Total Revenue"
               value={formatCurrency(stats.total_revenue)}
-              change={stats.revenue_change}
-              trend="up"
               loading={loading}
             />
             
@@ -366,8 +360,6 @@ const AdminInvoicesPage = () => {
               iconColor="text-blue-600"
               title="Total Invoices"
               value={stats.paid_invoices_count.toString()}
-              change={stats.paid_invoices_change}
-              trend="up"
               loading={loading}
             />
             
@@ -377,8 +369,6 @@ const AdminInvoicesPage = () => {
               iconColor="text-amber-600"
               title="Platform Fee"
               value={formatCurrency(stats.pending_amount)}
-              change={stats.pending_change}
-              trend={stats.pending_change >= 0 ? "up" : "down"}
               loading={loading}
             />
             
@@ -388,8 +378,6 @@ const AdminInvoicesPage = () => {
               iconColor="text-purple-600"
               title="Net to Freelancers"
               value={formatCurrency(stats.net_to_freelancers)}
-              change={stats.net_change}
-              trend="up"
               loading={loading}
             />
           </div>
@@ -841,18 +829,7 @@ const AdminInvoicesPage = () => {
   );
 };
 
-const StatCard = ({ icon: Icon, iconBg, iconColor, title, value, change, trend, loading }) => {
-  const getTrendIcon = () => {
-    if (trend === "up") return <TrendingUp className="w-3 h-3" />;
-    if (trend === "down") return <TrendingUp className="w-3 h-3 transform rotate-180" />;
-    return null;
-  };
-
-  const getTrendColor = () => {
-    if (trend === "up") return "text-emerald-600 bg-emerald-100";
-    if (trend === "down") return "text-rose-600 bg-rose-100";
-    return "text-amber-600 bg-amber-100";
-  };
+const StatCard = ({ icon: Icon, iconBg, iconColor, title, value, loading }) => {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5 hover:shadow-md transition-shadow">
@@ -869,17 +846,6 @@ const StatCard = ({ icon: Icon, iconBg, iconColor, title, value, change, trend, 
           <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
         </div>
       </div>
-      
-      {change !== undefined && change !== null && !loading && (
-        <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
-          <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${getTrendColor()}`}>
-            {getTrendIcon()}
-            {trend === "up" ? "+" : trend === "down" ? "-" : ""}{Math.abs(change)}%
-          </div>
-          <span className="text-xs text-gray-500 truncate">from last month</span>
-        </div>
-      )}
-      
       {loading && (
         <div className="mt-3 pt-3 border-t border-gray-100">
           <div className="h-6 bg-gray-200 animate-pulse rounded w-full"></div>

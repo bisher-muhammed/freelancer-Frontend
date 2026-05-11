@@ -102,20 +102,6 @@ export default function AdminHeader({ onMenuClick }) {
             {/* Dropdown */}
             <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
               <div className="py-1">
-                <Link
-                  href="/admin/profile"
-                  className="block px-4 py-2 text-sm hover:bg-gray-100"
-                >
-                  Admin Profile
-                </Link>
-
-                <Link
-                  href="/admin/settings"
-                  className="block px-4 py-2 text-sm hover:bg-gray-100"
-                >
-                  System Settings
-                </Link>
-
                 <button
                   onClick={handleLogout}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center space-x-2"

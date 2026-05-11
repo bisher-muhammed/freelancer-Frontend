@@ -23,18 +23,18 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false })
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (val) => {
   if (val === null || val === undefined) return "—";
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "INR",
+    currency: "USD",
     maximumFractionDigits: 2,
   }).format(val);
 };
 
 const fmtShort = (v) => {
   if (v == null) return "—";
-  if (v >= 100_000) return `₹${(v / 100_000).toFixed(1)}L`;
-  if (v >= 1_000)   return `₹${(v / 1_000).toFixed(1)}K`;
-  return `₹${Number(v).toFixed(0)}`;
+  if (v >= 100_000) return `$${(v / 100_000).toFixed(1)}L`;
+  if (v >= 1_000)   return `$${(v / 1_000).toFixed(1)}K`;
+  return `$${Number(v).toFixed(0)}`;
 };
 
 const fmtMonthShort = (iso) =>
@@ -411,7 +411,7 @@ export default function FreelancerDashboard() {
                       <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-3">
                         {project.budget_min && project.budget_max && (
                           <span className="font-semibold text-gray-800">
-                            ₹{Number(project.budget_min).toLocaleString("en-IN")} – ₹{Number(project.budget_max).toLocaleString("en-IN")}
+                            ${Number(project.budget_min).toLocaleString("en-US")} – ${Number(project.budget_max).toLocaleString("en-US")}
                           </span>
                         )}
                         {project.rate_type && (

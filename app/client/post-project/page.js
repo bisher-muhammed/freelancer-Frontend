@@ -413,7 +413,7 @@ const PostProjectPage = () => {
 
             console.log('Submitting project data:', submitData);
 
-            const response = await apiPrivate.post('/client/my-projects/', submitData);
+            const response = await apiPrivate.post('/projects/', submitData);
 
             if (response.status === 201) {
                 // Refresh subscription data to get updated remaining projects
@@ -423,7 +423,8 @@ const PostProjectPage = () => {
                 // Clear draft from localStorage
                 localStorage.removeItem('projectDraft');
                 // Redirect to projects list
-                router.push('/projects');
+                router.push('/client/my-projects');
+
             }
         } catch (error) {
             console.error('Error posting project:', error);

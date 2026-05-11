@@ -217,11 +217,11 @@ const FreelancerInvoiceDetailPage = () => {
   };
 
   const formatCurrency = (amount) => {
-    if (!amount) return "₹0.00";
+    if (!amount) return "$0.00";
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(numAmount);

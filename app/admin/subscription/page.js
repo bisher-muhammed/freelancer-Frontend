@@ -78,7 +78,7 @@ const EditablePlanCard = ({ plan, onSave, onCancel, onDelete, loading, colors, i
         <div className="flex items-baseline justify-center">
           <span className={`text-5xl font-bold bg-gradient-to-r ${colors.bg} bg-clip-text text-transparent`}>
             <div className="flex items-center justify-center">
-              <span className="text-white text-3xl mr-2">₹</span>
+              <span className="text-white text-3xl mr-2">$</span>
               <input
                 type="number"
                 step="0.01"
@@ -171,7 +171,7 @@ const StaticPlanCard = ({ plan, onEdit, onDelete, loading, colors, index }) => {
       <div className="text-center mb-8 mt-6">
         <div className="flex items-baseline justify-center">
           <span className={`text-5xl font-bold bg-gradient-to-r ${colors.bg} bg-clip-text text-transparent`}>
-            ₹{parseFloat(plan.price).toFixed(2)}
+            ${parseFloat(plan.price).toFixed(2)}
           </span>
         </div>
         <p className="text-slate-400 text-sm mt-2">Per Month</p>

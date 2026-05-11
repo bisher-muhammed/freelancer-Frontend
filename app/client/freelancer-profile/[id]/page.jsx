@@ -23,6 +23,7 @@ export default function FreelancerProfilePage() {
   const userId = id;
   const searchParams = useSearchParams(); 
   const proposalId = searchParams.get("proposal");
+  const proposalStatus = searchParams.get("status"); 
   
   const [freelancer, setFreelancer] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -963,6 +964,7 @@ export default function FreelancerProfilePage() {
           onClose={() => setShowMeetingModal(false)}
           freelancerId={userId}
           proposalId={proposalId}
+          proposalStatus={proposalStatus}
         />
       )}
     </>

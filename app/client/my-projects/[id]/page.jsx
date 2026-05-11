@@ -4,27 +4,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiPrivate } from '@/lib/apiPrivate';
 import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  DollarSign,
-  Briefcase,
-  Award,
-  Tag,
-  XCircle,
-  Loader2,
-  Target,
-  FileText,
-  Building,
-  Share2,
-  Bookmark,
-  Users,
-  TrendingUp,
-  BarChart3,
-  Edit,
-  Trash2,
-  CheckCircle,
-  AlertCircle
+  ArrowLeft, Calendar, Clock, DollarSign, Briefcase, Award,
+  Tag, XCircle, Target, FileText, Building, Share2,
+  TrendingUp, Edit, Trash2, CheckCircle, AlertCircle
 } from 'lucide-react';
 import EditProjectModal from '@/components/client/EditProjectModal';
 
@@ -35,8 +17,13 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [saved, setSaved] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -52,105 +39,88 @@ export default function ProjectDetailPage() {
         setLoading(false);
       }
     };
-
     if (id) fetchProject();
   }, [id]);
 
-  const handleSaveProject = () => {
-    setSaved(!saved);
-  };
-
-  const handleEdit = () => {
-    setShowEditModal(true);
-  };
-
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this project?')) {
-      try {
-        await apiPrivate.delete(`projects/${id}/`);
-        router.push('/projects');
-      } catch (err) {
-        alert('Failed to delete project');
-      }
+    if (!confirm('Are you sure you want to delete this project?')) return;
+    try {
+      await apiPrivate.delete(`projects/${id}/`);
+      router.push('/client/my-projects');
+    } catch {
+      showToast('Failed to delete project', 'error');
     }
   };
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'open':
-      case 'active':
-        return 'bg-green-500/10 text-green-600 border-green-200';
-      case 'closed':
-      case 'completed':
-        return 'bg-blue-500/10 text-blue-600 border-blue-200';
-      case 'pending':
-        return 'bg-yellow-500/10 text-yellow-600 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-600 border-gray-200';
+      case 'open':      return 'bg-green-500/10 text-green-600 border-green-200';
+      case 'completed': return 'bg-blue-500/10 text-blue-600 border-blue-200';
+      case 'pending':   return 'bg-yellow-500/10 text-yellow-600 border-yellow-200';
+      default:          return 'bg-gray-100 text-gray-600 border-gray-200';
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
-      case 'open':
-      case 'active':
-        return <CheckCircle className="h-4 w-4" />;
-      case 'closed':
-      case 'completed':
-        return <Award className="h-4 w-4" />;
-      case 'pending':
-        return <Clock className="h-4 w-4" />;
-      default:
-        return <AlertCircle className="h-4 w-4" />;
+      case 'open':      return <CheckCircle className="h-4 w-4" />;
+      case 'completed': return <Award className="h-4 w-4" />;
+      case 'pending':   return <Clock className="h-4 w-4" />;
+      default:          return <AlertCircle className="h-4 w-4" />;
     }
   };
 
+  // ✅ Fix 2: Use USD, not INR
   const formatCurrency = (amount) => {
-    if (!amount) return '₹0';
-    return new Intl.NumberFormat('en-IN', {
+    if (!amount) return '$0';
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'USD',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
+      month: 'long', day: 'numeric', year: 'numeric',
     });
   };
 
   const getDurationLabel = (duration) => {
-    const durationMap = {
-      'less_than_1_month': 'Less than 1 month',
-      '1_3_months': '1-3 months',
-      '3_6_months': '3-6 months',
-      'more_than_6_months': 'More than 6 months'
+    const map = {
+      'less_than_1_month':  'Less than 1 month',
+      '1_3_months':         '1–3 months',
+      '3_6_months':         '3–6 months',
+      'more_than_6_months': 'More than 6 months',
     };
-    return durationMap[duration] || duration;
+    return map[duration] || duration;
+  };
+
+  // ✅ Fix 1: category is an integer — resolve name from it
+  const getCategoryName = (category) => {
+    if (!category) return 'N/A';
+    if (typeof category === 'object') return category.name || 'N/A';
+    return `Category #${category}`; // fallback: show ID if backend doesn't expand it
+  };
+
+  const formatBudget = (project) => {
+    if (project.budget_type === 'fixed') {
+      return formatCurrency(project.fixed_budget);
+    }
+    return `${formatCurrency(project.hourly_min_rate)} – ${formatCurrency(project.hourly_max_rate)}/hr`;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
-            <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse"></div>
-          </div>
           <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-2xl shadow-lg p-8">
-                <div className="space-y-4">
-                  <div className="h-8 w-3/4 bg-gray-200 rounded-lg animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                  <div className="h-4 w-2/3 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-              </div>
+            <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-8 space-y-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className={`h-4 bg-gray-200 rounded animate-pulse ${i === 0 ? 'w-3/4 h-8' : i === 3 ? 'w-2/3' : 'w-full'}`} />
+              ))}
             </div>
           </div>
         </div>
@@ -165,9 +135,7 @@ export default function ProjectDetailPage() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <XCircle className="h-8 w-8 text-red-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            {error || 'Project Not Found'}
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{error || 'Project Not Found'}</h2>
           <p className="text-gray-600 mb-6">
             {error ? 'Failed to load project details. Please try again.' : 'The project you are looking for does not exist.'}
           </p>
@@ -175,8 +143,7 @@ export default function ProjectDetailPage() {
             onClick={() => router.back()}
             className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 mx-auto"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Go Back
+            <ArrowLeft className="h-4 w-4" /> Go Back
           </button>
         </div>
       </div>
@@ -185,41 +152,44 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-xl text-white text-sm font-medium transition-all
+          ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.back()}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-              >
+              <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
                 <ArrowLeft className="h-5 w-5 text-gray-600" />
               </button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(project.status)}`}>
-                    {getStatusIcon(project.status)}
-                    {project.status?.toUpperCase()}
-                  </span>
-                  <span className="text-sm text-gray-500">• Posted {formatDate(project.created_at)}</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(project.status)}`}>
+                  {getStatusIcon(project.status)}
+                  {project.status?.toUpperCase()}
+                </span>
+                <span className="text-sm text-gray-500">• Posted {formatDate(project.created_at)}</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={handleEdit}
+                onClick={() => setShowEditModal(true)}
                 className="flex items-center gap-2 px-4 py-2 text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors font-medium"
               >
-                <Edit className="h-4 w-4" />
-                Edit
+                <Edit className="h-4 w-4" /> Edit
               </button>
               <button
                 onClick={handleDelete}
                 className="flex items-center gap-2 px-4 py-2 text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors font-medium"
               >
-                <Trash2 className="h-4 w-4" />
-                Delete
+                <Trash2 className="h-4 w-4" /> Delete
               </button>
               <button className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-600">
                 <Share2 className="h-5 w-5" />
@@ -231,92 +201,88 @@ export default function ProjectDetailPage() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Main Content */}
+
+          {/* Left Column */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Project Title & Overview */}
             <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Briefcase className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{project.title}</h1>
-                  </div>
-                  {project.client?.company_name && (
-                    <div className="flex items-center gap-2 text-gray-600 mb-4">
-                      <Building className="h-4 w-4" />
-                      <span className="font-medium">{project.client.company_name}</span>
-                    </div>
+
+              {/* Title */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Briefcase className="h-5 w-5 text-blue-600" />
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{project.title}</h1>
+              </div>
+
+              {/* ✅ Fix 3: Show username since company_name doesn't exist */}
+              {project.client?.username && (
+                <div className="flex items-center gap-2 text-gray-600 mb-6">
+                  <Building className="h-4 w-4" />
+                  <span className="font-medium">{project.client.username}</span>
+                  {project.client.email && (
+                    <span className="text-sm text-gray-400">({project.client.email})</span>
                   )}
                 </div>
-              </div>
+              )}
 
-              {/* Project Description */}
+              {/* Description */}
               <div className="mb-8">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Project Description
+                  <FileText className="h-5 w-5" /> Project Description
                 </h2>
-                <div className="prose max-w-none">
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                    {project.description}
-                  </p>
-                </div>
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                  {project.description}
+                </p>
               </div>
 
-              {/* Key Info Cards - Updated without team_size */}
+              {/* Key Info Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
+                {/* ✅ Fix 2: Correct USD budget */}
+                <div className="bg-blue-50 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <DollarSign className="h-5 w-5 text-blue-600" />
                     <span className="text-xs font-semibold text-blue-700 uppercase">Budget</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">
-                    {project.budget_type === 'fixed' 
-                      ? formatCurrency(project.fixed_budget)
-                      : `${formatCurrency(project.hourly_min_rate)} - ${formatCurrency(project.hourly_max_rate)}/hr`
-                    }
-                  </p>
+                  <p className="text-lg font-bold text-gray-900">{formatBudget(project)}</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4">
+                <div className="bg-emerald-50 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <Award className="h-5 w-5 text-emerald-600" />
                     <span className="text-xs font-semibold text-emerald-700 uppercase">Level</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900 capitalize">{project.experience_level}</p>
+                  <p className="text-lg font-bold text-gray-900 capitalize">{project.experience_level}</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
+                <div className="bg-purple-50 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <Clock className="h-5 w-5 text-purple-600" />
                     <span className="text-xs font-semibold text-purple-700 uppercase">Duration</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">{getDurationLabel(project.duration)}</p>
+                  <p className="text-lg font-bold text-gray-900">{getDurationLabel(project.duration)}</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4">
+                {/* ✅ Fix 1: category is an integer */}
+                <div className="bg-amber-50 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <Tag className="h-5 w-5 text-amber-600" />
                     <span className="text-xs font-semibold text-amber-700 uppercase">Category</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">{project.category?.name || 'N/A'}</p>
+                  <p className="text-lg font-bold text-gray-900">{getCategoryName(project.category)}</p>
                 </div>
               </div>
 
-              {/* Skills Section */}
+              {/* Skills */}
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Tag className="h-5 w-5" />
-                  Skills Required
+                  <Tag className="h-5 w-5" /> Skills Required
                 </h2>
                 {Array.isArray(project.skills) && project.skills.length > 0 ? (
                   <div className="flex flex-wrap gap-3">
                     {project.skills.map((skill) => (
                       <span
                         key={skill.id}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:border-blue-300 hover:text-blue-700 hover:shadow-sm transition-all duration-200"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:border-blue-300 hover:text-blue-700 transition-all"
                       >
                         <Tag className="h-4 w-4" />
                         {skill.name}
@@ -326,57 +292,37 @@ export default function ProjectDetailPage() {
                 ) : (
                   <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-2xl">
                     <Tag className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No specific skills required</p>
-                    <p className="text-sm text-gray-400 mt-1">Open to all skill levels</p>
+                    <p className="text-gray-500">No specific skills listed</p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Additional Details - Updated without team_size and assignment_type */}
+            {/* Additional Details */}
+            {/* ✅ Fix 4: Static bg classes instead of dynamic replacements Tailwind can't compile */}
             <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
               <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Project Details
+                <Target className="h-5 w-5" /> Project Details
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InfoCard
-                  icon={<Calendar className="h-5 w-5" />}
-                  title="Posted On"
-                  value={formatDate(project.created_at)}
-                  color="text-blue-600"
-                />
-                <InfoCard
-                  icon={<Clock className="h-5 w-5" />}
-                  title="Duration"
-                  value={getDurationLabel(project.duration)}
-                  color="text-purple-600"
-                />
-                <InfoCard
-                  icon={<TrendingUp className="h-5 w-5" />}
-                  title="Budget Type"
-                  value={project.budget_type === 'fixed' ? 'Fixed Price' : 'Hourly Rate'}
-                  color="text-green-600"
-                />
-                <InfoCard
-                  icon={<Award className="h-5 w-5" />}
-                  title="Experience Level"
-                  value={project.experience_level?.charAt(0).toUpperCase() + project.experience_level?.slice(1)}
-                  color="text-amber-600"
-                />
+                <InfoCard icon={<Calendar className="h-5 w-5 text-blue-600" />}   title="Posted On"        value={formatDate(project.created_at)}                                                          bg="bg-blue-50"   />
+                <InfoCard icon={<Clock className="h-5 w-5 text-purple-600" />}    title="Duration"         value={getDurationLabel(project.duration)}                                                      bg="bg-purple-50" />
+                <InfoCard icon={<TrendingUp className="h-5 w-5 text-green-600" />} title="Budget Type"     value={project.budget_type === 'fixed' ? 'Fixed Price' : 'Hourly Rate'}                        bg="bg-green-50"  />
+                <InfoCard icon={<Award className="h-5 w-5 text-amber-600" />}     title="Experience Level" value={project.experience_level?.charAt(0).toUpperCase() + project.experience_level?.slice(1)} bg="bg-amber-50"  />
               </div>
             </div>
           </div>
 
-          {/* Right Column - Sidebar */}
+          {/* Right Column */}
           <div className="space-y-8">
-            {/* Project Status Card */}
+
+            {/* Status Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Status</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                  <span className="text-sm text-gray-600">Current Status</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(project.status)}`}>
+                  <span className="text-sm text-gray-600">Status</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(project.status)}`}>
                     {project.status?.toUpperCase()}
                   </span>
                 </div>
@@ -392,7 +338,7 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* Budget Summary */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-6">
+            <div className="bg-blue-50 rounded-2xl shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Budget Summary</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -419,27 +365,28 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* Requirements - Updated without team_size and assignment_type */}
+            {/* Requirements */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Requirements</h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm">
-                  <Award className="h-4 w-4 text-emerald-600" />
+                  <Award className="h-4 w-4 text-emerald-600 shrink-0" />
                   <span className="text-gray-700">Experience: <span className="font-semibold text-gray-900 capitalize">{project.experience_level}</span></span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
-                  <Clock className="h-4 w-4 text-purple-600" />
+                  <Clock className="h-4 w-4 text-purple-600 shrink-0" />
                   <span className="text-gray-700">Duration: <span className="font-semibold text-gray-900">{getDurationLabel(project.duration)}</span></span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
-                  <Tag className="h-4 w-4 text-amber-600" />
-                  <span className="text-gray-700">Category: <span className="font-semibold text-gray-900">{project.category?.name || 'N/A'}</span></span>
+                  <Tag className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span className="text-gray-700">Category: <span className="font-semibold text-gray-900">{getCategoryName(project.category)}</span></span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Edit Modal */}
         {showEditModal && (
           <EditProjectModal
             project={project}
@@ -447,42 +394,32 @@ export default function ProjectDetailPage() {
             onUpdated={(updatedProject) => {
               setProject(updatedProject);
               setShowEditModal(false);
-              // Optionally show success message
-              alert('Project updated successfully!');
+              showToast('Project updated successfully!');
             }}
           />
         )}
 
-        {/* Bottom Navigation */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-between items-center">
-          <button 
+        {/* Bottom Nav */}
+        <div className="mt-8 flex items-center justify-between">
+          <button
             onClick={() => router.back()}
             className="text-gray-600 hover:text-gray-900 text-sm font-medium flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Projects
+            <ArrowLeft className="h-4 w-4" /> Back to Projects
           </button>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500">
-              Last updated: {formatDate(project.updated_at)}
-            </span>
-          </div>
+          <span className="text-sm text-gray-500">Last updated: {formatDate(project.updated_at)}</span>
         </div>
       </div>
     </div>
   );
 }
 
-// Helper Components
-function InfoCard({ icon, title, value, color }) {
+// ✅ Fix 4: bg passed as a static prop instead of being computed dynamically
+function InfoCard({ icon, title, value, bg }) {
   return (
-    <div className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors">
+    <div className={`${bg} rounded-xl p-4 hover:opacity-90 transition-opacity`}>
       <div className="flex items-center gap-3 mb-2">
-        <div className={`p-2 rounded-lg ${color.replace('text-', 'bg-')}/10`}>
-          <div className={color}>
-            {icon}
-          </div>
-        </div>
+        <div className="p-2 bg-white/60 rounded-lg">{icon}</div>
         <h4 className="text-sm font-medium text-gray-700">{title}</h4>
       </div>
       <p className="text-gray-900 font-semibold">{value}</p>

@@ -1,22 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { apiPrivate } from '@/lib/apiPrivate';
 import { 
-  X, 
-  Briefcase, 
-  DollarSign, 
-  FileText, 
-  Tag, 
-  Clock, 
-  Award, 
-  AlertCircle,
-  Save,
-  Plus
+  X, Briefcase, DollarSign, FileText, Tag,
+  Award, AlertCircle, Save, Plus
 } from 'lucide-react';
 
 export default function EditProjectModal({ project, onClose, onUpdated }) {
-  // Initialize form data with project details
   const [formData, setFormData] = useState({
     title: project.title || '',
     description: project.description || '',
@@ -41,172 +33,117 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
   const [showNewSkill, setShowNewSkill] = useState(false);
   const [addingSkill, setAddingSkill] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
-  // Fetch categories and skills
+  // Portal needs document to be available
+  useEffect(() => {
+    setMounted(true);
+    // Prevent body scroll while modal is open
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch categories
-        const categoriesRes = await apiPrivate.get('/categories/');
+        const [categoriesRes, skillsRes] = await Promise.all([
+          apiPrivate.get('/categories/'),
+          apiPrivate.get('/skills/'),
+        ]);
+
         const categoriesData = categoriesRes.data.results || categoriesRes.data || [];
-        setCategories(categoriesData);
-        
-        // Fetch skills
-        const skillsRes = await apiPrivate.get('/skills/');
         const skillsData = skillsRes.data.results || skillsRes.data || [];
+        setCategories(categoriesData);
         setAvailableSkills(skillsData);
-        
-        // Extract skill IDs from project
+
         let projectSkillIds = [];
         let initialSelectedSkills = [];
-        
-        if (project.skills_required && Array.isArray(project.skills_required)) {
-          // If skills_required is an array of IDs
-          project.skills_required.forEach(skill => {
-            if (typeof skill === 'number') {
-              projectSkillIds.push(skill);
-              const foundSkill = skillsData.find(s => s.id === skill);
-              if (foundSkill) initialSelectedSkills.push(foundSkill);
-            } else if (typeof skill === 'string') {
-              const match = skill.match(/Skill object \((\d+)\)/);
-              if (match) {
-                const skillId = parseInt(match[1]);
-                projectSkillIds.push(skillId);
-                const foundSkill = skillsData.find(s => s.id === skillId);
-                if (foundSkill) initialSelectedSkills.push(foundSkill);
-              }
-            } else if (skill && typeof skill === 'object' && skill.id) {
-              projectSkillIds.push(skill.id);
-              const foundSkill = skillsData.find(s => s.id === skill.id) || skill;
-              initialSelectedSkills.push(foundSkill);
-            }
-          });
-        } else if (project.skills && Array.isArray(project.skills)) {
-          // If skills is an array of skill objects
-          project.skills.forEach(skill => {
-            if (skill && skill.id) {
-              projectSkillIds.push(skill.id);
-              const foundSkill = skillsData.find(s => s.id === skill.id) || skill;
-              initialSelectedSkills.push(foundSkill);
-            }
-          });
-        }
-        
-        console.log('Project skill IDs:', projectSkillIds);
-        console.log('Initial selected skills:', initialSelectedSkills);
-        
+
+        const sourceSkills = project.skills || project.skills_required || [];
+        sourceSkills.forEach(skill => {
+          if (typeof skill === 'number') {
+            projectSkillIds.push(skill);
+            const found = skillsData.find(s => s.id === skill);
+            if (found) initialSelectedSkills.push(found);
+          } else if (skill && typeof skill === 'object' && skill.id) {
+            projectSkillIds.push(skill.id);
+            const found = skillsData.find(s => s.id === skill.id) || skill;
+            initialSelectedSkills.push(found);
+          }
+        });
+
         setSelectedSkills(initialSelectedSkills);
         setFormData(prev => ({
           ...prev,
           skills_required: projectSkillIds,
           category: project.category?.id || project.category || ''
         }));
-        
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
-    
     fetchData();
   }, [project]);
 
+  const clearError = (...keys) => {
+    setErrors(prev => {
+      const next = { ...prev };
+      keys.forEach(k => delete next[k]);
+      return next;
+    });
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const updatedFormData = {
-      ...formData,
-      [name]: value
-    };
+    const updated = { ...formData, [name]: value };
 
-    // Clear budget fields when switching budget type
     if (name === 'budget_type') {
       if (value === 'fixed') {
-        updatedFormData.hourly_min_rate = '';
-        updatedFormData.hourly_max_rate = '';
-        if (errors.hourly_min_rate || errors.hourly_max_rate) {
-          setErrors(prev => {
-            const newErrors = { ...prev };
-            delete newErrors.hourly_min_rate;
-            delete newErrors.hourly_max_rate;
-            delete newErrors.hourly;
-            return newErrors;
-          });
-        }
+        updated.hourly_min_rate = '';
+        updated.hourly_max_rate = '';
+        clearError('hourly_min_rate', 'hourly_max_rate', 'hourly');
       } else {
-        updatedFormData.fixed_budget = '';
-        if (errors.fixed_budget) {
-          setErrors({ ...errors, fixed_budget: '' });
-        }
+        updated.fixed_budget = '';
+        clearError('fixed_budget');
       }
     }
 
-    setFormData(updatedFormData);
-
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
+    setFormData(updated);
+    clearError(name);
   };
 
   const handleSkillSelect = (skillId) => {
-    const skillIdNum = parseInt(skillId);
-    if (!skillIdNum) return;
-    
-    const skill = availableSkills.find(s => s.id === skillIdNum);
-    if (skill && !selectedSkills.find(s => s.id === skill.id)) {
-      const newSelectedSkills = [...selectedSkills, skill];
-      setSelectedSkills(newSelectedSkills);
-      setFormData({
-        ...formData,
-        skills_required: [...formData.skills_required, skill.id]
-      });
-    }
-    
-    // Clear any skills required error
-    if (errors.skills_required) {
-      setErrors({ ...errors, skills_required: '' });
+    const id = parseInt(skillId);
+    if (!id) return;
+    const skill = availableSkills.find(s => s.id === id);
+    if (skill && !selectedSkills.find(s => s.id === id)) {
+      setSelectedSkills(prev => [...prev, skill]);
+      setFormData(prev => ({ ...prev, skills_required: [...prev.skills_required, id] }));
+      clearError('skills_required');
     }
   };
 
   const handleSkillRemove = (skillId) => {
-    const newSelectedSkills = selectedSkills.filter(s => s.id !== skillId);
-    setSelectedSkills(newSelectedSkills);
-    setFormData({
-      ...formData,
-      skills_required: formData.skills_required.filter(id => id !== skillId)
-    });
+    setSelectedSkills(prev => prev.filter(s => s.id !== skillId));
+    setFormData(prev => ({ ...prev, skills_required: prev.skills_required.filter(id => id !== skillId) }));
   };
 
   const handleAddSkill = async () => {
-    if (!formData.new_skill.trim()) {
-      setErrors({ ...errors, new_skill: 'Skill name is required' });
-      return;
-    }
-
-    if (!formData.new_skill_category) {
-      setErrors({ ...errors, new_skill_category: 'Please select a category for the skill' });
-      return;
-    }
+    if (!formData.new_skill.trim()) { setErrors(prev => ({ ...prev, new_skill: 'Skill name is required' })); return; }
+    if (!formData.new_skill_category) { setErrors(prev => ({ ...prev, new_skill_category: 'Please select a category' })); return; }
 
     setAddingSkill(true);
     try {
-      const response = await apiPrivate.post('/skills/', {
+      const res = await apiPrivate.post('/skills/', {
         name: formData.new_skill,
         category: parseInt(formData.new_skill_category)
       });
-      
-      if (response.status === 201) {
-        const newSkill = response.data;
-        setAvailableSkills([...availableSkills, newSkill]);
-        
-        // Add the new skill to selected skills
-        const newSelectedSkills = [...selectedSkills, newSkill];
-        setSelectedSkills(newSelectedSkills);
+      if (res.status === 201) {
+        const newSkill = res.data;
+        setAvailableSkills(prev => [...prev, newSkill]);
+        setSelectedSkills(prev => [...prev, newSkill]);
         setFormData(prev => ({
           ...prev,
           skills_required: [...prev.skills_required, newSkill.id],
@@ -214,111 +151,47 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
           new_skill_category: ''
         }));
         setShowNewSkill(false);
-        setErrors(prev => ({ 
-          ...prev, 
-          new_skill: '', 
-          new_skill_category: '' 
-        }));
-        
-        // Clear skills required error if any
-        if (errors.skills_required) {
-          setErrors({ ...errors, skills_required: '' });
-        }
+        clearError('new_skill', 'new_skill_category', 'skills_required');
       }
-    } catch (error) {
-      console.error('Error adding skill:', error);
-      if (error.response?.data) {
-        const backendErrors = error.response.data;
-        if (backendErrors.name) {
-          setErrors(prev => ({ ...prev, new_skill: backendErrors.name[0] }));
-        } else if (backendErrors.category) {
-          setErrors(prev => ({ ...prev, new_skill_category: backendErrors.category[0] }));
-        } else {
-          setErrors(prev => ({ ...prev, new_skill: 'Failed to add skill' }));
-        }
-      } else {
-        setErrors(prev => ({ ...prev, new_skill: 'Failed to add skill' }));
-      }
+    } catch (err) {
+      const data = err.response?.data;
+      if (data?.name) setErrors(prev => ({ ...prev, new_skill: data.name[0] }));
+      else if (data?.category) setErrors(prev => ({ ...prev, new_skill_category: data.category[0] }));
+      else setErrors(prev => ({ ...prev, new_skill: 'Failed to add skill' }));
     } finally {
       setAddingSkill(false);
     }
   };
 
   const validateForm = () => {
-    const newErrors = {};
-
-    // Title validation
-    if (!formData.title.trim()) {
-      newErrors.title = 'Project title is required';
-    } else if (formData.title.trim().length < 5) {
-      newErrors.title = 'Title must be at least 5 characters long';
-    }
-
-    // Description validation
-    if (!formData.description.trim()) {
-      newErrors.description = 'Project description is required';
-    } else if (formData.description.trim().length < 20) {
-      newErrors.description = 'Description must be at least 20 characters long';
-    }
-
-    if (!formData.category) {
-      newErrors.category = 'Please select a category';
-    }
-
-    if (formData.skills_required.length === 0) {
-      newErrors.skills_required = 'Add at least one skill';
-    }
-
-    // Budget validation
+    const e = {};
+    if (!formData.title.trim()) e.title = 'Title is required';
+    else if (formData.title.trim().length < 5) e.title = 'At least 5 characters';
+    if (!formData.description.trim()) e.description = 'Description is required';
+    else if (formData.description.trim().length < 20) e.description = 'At least 20 characters';
+    if (!formData.category) e.category = 'Please select a category';
+    if (formData.skills_required.length === 0) e.skills_required = 'Add at least one skill';
     if (formData.budget_type === 'fixed') {
-      if (!formData.fixed_budget) {
-        newErrors.fixed_budget = 'Budget amount is required';
-      } else if (parseFloat(formData.fixed_budget) <= 0) {
-        newErrors.fixed_budget = 'Budget must be greater than 0';
-      }
+      if (!formData.fixed_budget) e.fixed_budget = 'Budget is required';
+      else if (parseFloat(formData.fixed_budget) <= 0) e.fixed_budget = 'Must be greater than 0';
     }
-
     if (formData.budget_type === 'hourly') {
-      if (!formData.hourly_min_rate && !formData.hourly_max_rate) {
-        newErrors.hourly = 'Hourly min and max rates are required';
-      } else if (!formData.hourly_min_rate) {
-        newErrors.hourly_min_rate = 'Hourly min rate is required';
-      } else if (!formData.hourly_max_rate) {
-        newErrors.hourly_max_rate = 'Hourly max rate is required';
-      } else {
-        const minRate = parseFloat(formData.hourly_min_rate);
-        const maxRate = parseFloat(formData.hourly_max_rate);
-        
-        if (isNaN(minRate) || isNaN(maxRate)) {
-          newErrors.hourly = 'Please enter valid hourly rates';
-        } else if (minRate <= 0 || maxRate <= 0) {
-          newErrors.hourly = 'Hourly rates must be positive';
-        } else if (minRate >= maxRate) {
-          newErrors.hourly = 'Hourly min must be less than max';
-        }
-      }
+      const min = parseFloat(formData.hourly_min_rate);
+      const max = parseFloat(formData.hourly_max_rate);
+      if (!formData.hourly_min_rate || !formData.hourly_max_rate) e.hourly = 'Both rates are required';
+      else if (isNaN(min) || isNaN(max) || min <= 0 || max <= 0) e.hourly = 'Enter valid positive rates';
+      else if (min >= max) e.hourly = 'Min must be less than max';
     }
-
-    if (!formData.duration) {
-      newErrors.duration = 'Please select project duration';
-    }
-
-    if (!formData.experience_level) {
-      newErrors.experience_level = 'Please select experience level';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!formData.duration) e.duration = 'Please select duration';
+    if (!formData.experience_level) e.experience_level = 'Please select experience level';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setSaving(true);
     setErrors({});
-
     try {
       const submitData = {
         title: formData.title.trim(),
@@ -329,38 +202,22 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
         budget_type: formData.budget_type,
         experience_level: formData.experience_level,
         duration: formData.duration,
+        fixed_budget: formData.budget_type === 'fixed' ? parseFloat(formData.fixed_budget) : null,
+        hourly_min_rate: formData.budget_type === 'hourly' ? parseFloat(formData.hourly_min_rate) : null,
+        hourly_max_rate: formData.budget_type === 'hourly' ? parseFloat(formData.hourly_max_rate) : null,
       };
-
-      // Add budget data based on type
-      if (formData.budget_type === 'fixed') {
-        submitData.fixed_budget = parseFloat(formData.fixed_budget);
-        submitData.hourly_min_rate = null;
-        submitData.hourly_max_rate = null;
-      } else {
-        submitData.hourly_min_rate = parseFloat(formData.hourly_min_rate);
-        submitData.hourly_max_rate = parseFloat(formData.hourly_max_rate);
-        submitData.fixed_budget = null;
-      }
-
-      // Log the data being sent
-      console.log('Submitting data:', submitData);
-
       const res = await apiPrivate.patch(`projects/${project.id}/`, submitData);
       onUpdated(res.data);
       onClose();
     } catch (err) {
-      console.error('Error updating project:', err);
       if (err.response?.data) {
-        const backendErrors = err.response.data;
-        const formattedErrors = {};
-        Object.keys(backendErrors).forEach(key => {
-          if (Array.isArray(backendErrors[key])) {
-            formattedErrors[key] = backendErrors[key].join(', ');
-          } else {
-            formattedErrors[key] = backendErrors[key];
-          }
+        const formatted = {};
+        Object.keys(err.response.data).forEach(key => {
+          formatted[key] = Array.isArray(err.response.data[key])
+            ? err.response.data[key].join(', ')
+            : err.response.data[key];
         });
-        setErrors(formattedErrors);
+        setErrors(formatted);
       } else {
         setErrors({ general: 'Failed to update project. Please try again.' });
       }
@@ -369,534 +226,408 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
     }
   };
 
-  const handleCancel = () => {
-    onClose();
-  };
-
+  // ── Loading spinner (also via portal) ──────────────────────────────────────
   if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-        <div className="bg-white rounded-2xl p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-900 font-medium">Loading...</p>
+    if (!mounted) return null;
+    return createPortal(
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[99999]">
+        <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-700 mx-auto mb-4" />
+          <p className="text-gray-700 font-medium">Loading project data...</p>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-[9999] p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl w-full max-w-4xl my-8 shadow-2xl">
-        {/* Header */}
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b border-gray-100">
+  if (!mounted) return null;
+
+  // ── Modal via portal — renders at document.body, escapes sidebar layout ──
+  return createPortal(
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[99999] p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg">
-              <Briefcase className="h-5 w-5 text-white" />
+            <div className="p-2 bg-gray-700 rounded-lg">
+              <Briefcase className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Edit Project</h2>
-              <p className="text-gray-700 font-medium text-sm">Update project details</p>
+              <h2 className="text-lg font-bold text-gray-900">Edit Project</h2>
+              <p className="text-xs text-gray-500">Update project details</p>
             </div>
           </div>
           <button
-            onClick={handleCancel}
+            onClick={onClose}
             disabled={saving}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
-            <X className="h-5 w-5 text-gray-900" />
+            <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
+        {/* ── Scrollable Body ── */}
+        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-7">
+
           {errors.general && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
-              <p className="text-red-700 font-medium">{errors.general}</p>
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+              <p className="text-red-700 text-sm font-medium">{errors.general}</p>
             </div>
           )}
 
-          <div className="space-y-8">
-            {/* Project Details */}
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Project Details
-                </h3>
+          {/* Project Details */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <FileText className="h-4 w-4" /> Project Details
+            </h3>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2">
-                    Project Title *
-                  </label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Build a responsive e-commerce website"
-                    className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                      errors.title ? 'border-red-300' : 'border-blue-200'
-                    }`}
-                  />
-                  <div className="flex justify-between items-center mt-2 px-2">
-                    <p className="text-gray-700 text-sm">
-                      Minimum 5 characters ({formData.title.length}/5)
-                    </p>
-                    {errors.title && <p className="text-red-600 text-sm font-bold">{errors.title}</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2">
-                    Description *
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                      errors.description ? 'border-red-300' : 'border-blue-200'
-                    }`}
-                    placeholder="Describe the project..."
-                  />
-                  <div className="flex justify-between items-center mt-2 px-2">
-                    <p className="text-gray-700 text-sm">
-                      Minimum 20 characters ({formData.description.length}/20)
-                    </p>
-                    {errors.description && <p className="text-red-600 text-sm font-bold">{errors.description}</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2">
-                    Category *
-                  </label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                      errors.category ? 'border-red-300' : 'border-blue-200'
-                    }`}
-                  >
-                    <option value="" className="text-gray-700">Select a category</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id} className="text-gray-900">
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.category && (
-                    <p className="text-red-600 text-sm font-bold mt-2 px-2">{errors.category}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2">
-                    Status *
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  >
-                    <option value="open" className="text-gray-900">Open</option>
-                    <option value="closed" className="text-gray-900">Closed</option>
-                    <option value="in_progress" className="text-gray-900">In Progress</option>
-                    <option value="completed" className="text-gray-900">Completed</option>
-                  </select>
-                </div>
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1.5">Project Title *</label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleInputChange}
+                placeholder="e.g., Build a responsive e-commerce website"
+                className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300 transition-all ${errors.title ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+              />
+              <div className="flex justify-between mt-1.5 px-1">
+                <span className="text-xs text-gray-400">{formData.title.length} / 5 min</span>
+                {errors.title && <span className="text-xs text-red-600 font-medium">{errors.title}</span>}
               </div>
             </div>
 
-            {/* Skills Required */}
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <Tag className="h-5 w-5" />
-                    Required Skills
-                  </h3>
-                  {!showNewSkill && (
-                    <button
-                      type="button"
-                      onClick={() => setShowNewSkill(true)}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Can't find a skill?
-                    </button>
-                  )}
-                </div>
-                
-                {!showNewSkill ? (
-                  <div className="space-y-4">
-                    <select
-                      value=""
-                      onChange={(e) => handleSkillSelect(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                    >
-                      <option value="" className="text-gray-700">Select a skill from list</option>
-                      {availableSkills
-                        .filter(skill => !selectedSkills.find(s => s.id === skill.id))
-                        .map(skill => (
-                          <option key={skill.id} value={skill.id} className="text-gray-900">
-                            {skill.name} ({skill.category?.name || 'Uncategorized'})
-                          </option>
-                        ))
-                      }
-                    </select>
-                    
-                    {selectedSkills.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-4">
-                        {selectedSkills.map((skill) => (
-                          <span
-                            key={skill.id}
-                            className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-bold"
-                          >
-                            {skill.name}
-                            <button
-                              type="button"
-                              onClick={() => handleSkillRemove(skill.id)}
-                              className="hover:bg-blue-700 rounded-lg p-1 transition-colors"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {selectedSkills.length === 0 && (
-                      <div className="text-center py-4 border-2 border-dashed border-gray-300 rounded-xl">
-                        <Tag className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500 text-sm">No skills selected yet</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2">
-                          New Skill Name *
-                        </label>
-                        <input
-                          type="text"
-                          name="new_skill"
-                          value={formData.new_skill}
-                          onChange={handleInputChange}
-                          placeholder="e.g., Next.js, Figma, TensorFlow"
-                          className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                            errors.new_skill ? 'border-red-300' : 'border-blue-200'
-                          }`}
-                        />
-                        {errors.new_skill && (
-                          <p className="text-red-600 text-sm font-bold mt-1 px-2">
-                            {errors.new_skill}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2">
-                          Category for this Skill *
-                        </label>
-                        <select
-                          name="new_skill_category"
-                          value={formData.new_skill_category}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                            errors.new_skill_category ? 'border-red-300' : 'border-blue-200'
-                          }`}
-                        >
-                          <option value="" className="text-gray-700">Select category</option>
-                          {categories.map(cat => (
-                            <option key={cat.id} value={cat.id} className="text-gray-900">
-                              {cat.name}
-                            </option>
-                          ))}
-                        </select>
-                        {errors.new_skill_category && (
-                          <p className="text-red-600 text-sm font-bold mt-1 px-2">
-                            {errors.new_skill_category}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={handleAddSkill}
-                        disabled={addingSkill || !formData.new_skill.trim() || !formData.new_skill_category}
-                        className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-bold"
-                      >
-                        {addingSkill ? 'Adding...' : 'Add Skill'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowNewSkill(false);
-                          setFormData({
-                            ...formData,
-                            new_skill: '',
-                            new_skill_category: ''
-                          });
-                          setErrors({
-                            ...errors,
-                            new_skill: '',
-                            new_skill_category: ''
-                          });
-                        }}
-                        className="px-4 py-3 bg-gray-200 text-gray-900 rounded-xl hover:bg-gray-300 transition-colors font-bold"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                    <p className="text-gray-700 text-sm px-2">
-                      Select from list above or add a new skill with its category
-                    </p>
-                  </div>
-                )}
-                
-                {errors.skills_required && !showNewSkill && (
-                  <p className="text-red-600 text-sm font-bold px-2">
-                    {errors.skills_required}
-                  </p>
-                )}
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1.5">Description *</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={3}
+                placeholder="Describe the project..."
+                className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300 transition-all resize-none ${errors.description ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+              />
+              <div className="flex justify-between mt-1.5 px-1">
+                <span className="text-xs text-gray-400">{formData.description.length} / 20 min</span>
+                {errors.description && <span className="text-xs text-red-600 font-medium">{errors.description}</span>}
               </div>
             </div>
 
-            {/* Budget & Timeline */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Budget & Timeline
+            {/* Category + Status side by side */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">Category *</label>
+                <select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300 transition-all ${errors.category ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                >
+                  <option value="">Select category</option>
+                  {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                </select>
+                {errors.category && <p className="text-xs text-red-600 font-medium mt-1 px-1">{errors.category}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">Status *</label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300 transition-all"
+                >
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          {/* Skills */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                <Tag className="h-4 w-4" /> Required Skills
               </h3>
-
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-3">
-                    Budget Type *
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label className={`flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.budget_type === 'fixed' ? 'border-blue-500 bg-blue-50' : 'border-blue-200 hover:border-blue-300'
-                    }`}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <input
-                          type="radio"
-                          name="budget_type"
-                          value="fixed"
-                          checked={formData.budget_type === 'fixed'}
-                          onChange={handleInputChange}
-                          className="w-5 h-5 text-blue-600"
-                        />
-                        <span className="font-bold text-gray-900">Fixed Price</span>
-                      </div>
-                      <span className="text-gray-700 text-sm ml-8">
-                        Pay a set amount for the entire project
-                      </span>
-                    </label>
-
-                    <label className={`flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.budget_type === 'hourly' ? 'border-blue-500 bg-blue-50' : 'border-blue-200 hover:border-blue-300'
-                    }`}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <input
-                          type="radio"
-                          name="budget_type"
-                          value="hourly"
-                          checked={formData.budget_type === 'hourly'}
-                          onChange={handleInputChange}
-                          className="w-5 h-5 text-blue-600"
-                        />
-                        <span className="font-bold text-gray-900">Hourly Rate</span>
-                      </div>
-                      <span className="text-gray-700 text-sm ml-8">
-                        Pay per hour of work
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {formData.budget_type === 'fixed' && (
-                  <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-2">
-                      Project Budget *
-                    </label>
-                    <div className="relative max-w-md">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 font-bold">₹</span>
-                      <input
-                        type="number"
-                        name="fixed_budget"
-                        value={formData.fixed_budget}
-                        onChange={handleInputChange}
-                        placeholder="5000"
-                        min="0.01"
-                        step="0.01"
-                        className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                          errors.fixed_budget ? 'border-red-300' : 'border-blue-200'
-                        }`}
-                      />
-                    </div>
-                    {errors.fixed_budget && <p className="text-red-600 text-sm font-bold mt-2 px-2">{errors.fixed_budget}</p>}
-                  </div>
-                )}
-
-                {formData.budget_type === 'hourly' && (
-                  <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-2">
-                      Hourly Rate Range *
-                    </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2">Min Hourly Rate</label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 font-bold">₹</span>
-                          <input
-                            type="number"
-                            name="hourly_min_rate"
-                            value={formData.hourly_min_rate}
-                            onChange={handleInputChange}
-                            placeholder="25"
-                            min="0.01"
-                            step="0.01"
-                            className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                              errors.hourly_min_rate ? 'border-red-300' : 'border-blue-200'
-                            }`}
-                          />
-                          {errors.hourly_min_rate && (
-                            <p className="text-red-600 text-sm font-bold mt-1">{errors.hourly_min_rate}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2">Max Hourly Rate</label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 font-bold">₹</span>
-                          <input
-                            type="number"
-                            name="hourly_max_rate"
-                            value={formData.hourly_max_rate}
-                            onChange={handleInputChange}
-                            placeholder="50"
-                            min="0.01"
-                            step="0.01"
-                            className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                              errors.hourly_max_rate ? 'border-red-300' : 'border-blue-200'
-                            }`}
-                          />
-                          {errors.hourly_max_rate && (
-                            <p className="text-red-600 text-sm font-bold mt-1">{errors.hourly_max_rate}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {errors.hourly && (
-                      <p className="text-red-600 text-sm font-bold mt-2 px-2">
-                        {errors.hourly}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-2">
-                    Project Duration *
-                  </label>
-                  <select
-                    name="duration"
-                    value={formData.duration}
-                    onChange={handleInputChange}
-                    className={`w-full md:w-1/2 px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                      errors.duration ? 'border-red-300' : 'border-blue-200'
-                    }`}
-                  >
-                    <option value="" className="text-gray-700">Select duration</option>
-                    <option value="less_than_1_month" className="text-gray-900">Less than 1 month</option>
-                    <option value="1_3_months" className="text-gray-900">1-3 months</option>
-                    <option value="3_6_months" className="text-gray-900">3-6 months</option>
-                    <option value="more_than_6_months" className="text-gray-900">More than 6 months</option>
-                  </select>
-                  {errors.duration && <p className="text-red-600 text-sm font-bold mt-2 px-2">{errors.duration}</p>}
-                </div>
-              </div>
-            </div>
-
-            {/* Experience Level */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Experience Level
-              </h3>
-
-              <div className="space-y-4">
-                {[
-                  { value: 'entry', label: 'Entry Level', description: 'Looking for someone relatively new to this field' },
-                  { value: 'intermediate', label: 'Intermediate', description: 'Looking for substantial experience in this field' },
-                  { value: 'expert', label: 'Expert', description: 'Looking for comprehensive and deep expertise in this field' }
-                ].map((level) => (
-                  <label
-                    key={level.value}
-                    className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.experience_level === level.value ? 'border-blue-500 bg-blue-50' : 'border-blue-200 hover:border-blue-300 hover:bg-blue-50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="experience_level"
-                      value={level.value}
-                      checked={formData.experience_level === level.value}
-                      onChange={handleInputChange}
-                      className="mt-1 w-5 h-5 text-blue-600"
-                    />
-                    <div className="flex-1">
-                      <div className="font-bold text-gray-900">{level.label}</div>
-                      <div className="text-gray-700 text-sm mt-1">{level.description}</div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              {errors.experience_level && (
-                <p className="text-red-600 text-sm font-bold mt-4 px-2">
-                  {errors.experience_level}
-                </p>
+              {!showNewSkill && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewSkill(true)}
+                  className="text-xs text-gray-700 hover:text-gray-900 font-semibold flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add new skill
+                </button>
               )}
             </div>
-          </div>
+
+            {!showNewSkill ? (
+              <div className="space-y-3">
+                <select
+                  value=""
+                  onChange={(e) => handleSkillSelect(e.target.value)}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300 transition-all"
+                >
+                  <option value="">Select a skill...</option>
+                  {availableSkills
+                    .filter(skill => !selectedSkills.find(s => s.id === skill.id))
+                    .map(skill => (
+                      <option key={skill.id} value={skill.id}>
+                        {skill.name} {skill.category?.name ? `(${skill.category.name})` : ''}
+                      </option>
+                    ))}
+                </select>
+
+                {selectedSkills.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedSkills.map(skill => (
+                      <span key={skill.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 text-white rounded-lg text-xs font-semibold">
+                        {skill.name}
+                        <button type="button" onClick={() => handleSkillRemove(skill.id)} className="hover:bg-gray-600 rounded p-0.5 transition-colors">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 border-2 border-dashed border-gray-200 rounded-xl">
+                    <Tag className="h-6 w-6 text-gray-300 mx-auto mb-1" />
+                    <p className="text-gray-400 text-xs">No skills selected</p>
+                  </div>
+                )}
+
+                {errors.skills_required && <p className="text-xs text-red-600 font-medium px-1">{errors.skills_required}</p>}
+              </div>
+            ) : (
+              <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Skill Name *</label>
+                    <input
+                      type="text"
+                      name="new_skill"
+                      value={formData.new_skill}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Next.js"
+                      className={`w-full px-3 py-2 border-2 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all ${errors.new_skill ? 'border-red-300' : 'border-gray-200'}`}
+                    />
+                    {errors.new_skill && <p className="text-xs text-red-600 mt-1">{errors.new_skill}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Category *</label>
+                    <select
+                      name="new_skill_category"
+                      value={formData.new_skill_category}
+                      onChange={handleInputChange}
+                      className={`w-full px-3 py-2 border-2 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all ${errors.new_skill_category ? 'border-red-300' : 'border-gray-200'}`}
+                    >
+                      <option value="">Select category</option>
+                      {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                    </select>
+                    {errors.new_skill_category && <p className="text-xs text-red-600 mt-1">{errors.new_skill_category}</p>}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAddSkill}
+                    disabled={addingSkill || !formData.new_skill.trim() || !formData.new_skill_category}
+                    className="px-4 py-2 bg-gray-700 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {addingSkill ? 'Adding...' : 'Add Skill'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNewSkill(false);
+                      setFormData(prev => ({ ...prev, new_skill: '', new_skill_category: '' }));
+                      clearError('new_skill', 'new_skill_category');
+                    }}
+                    className="px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Budget & Timeline */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <DollarSign className="h-4 w-4" /> Budget & Timeline
+            </h3>
+
+            {/* Budget type toggle */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: 'fixed',  label: 'Fixed Price',  desc: 'Set total amount' },
+                { value: 'hourly', label: 'Hourly Rate',  desc: 'Pay per hour' },
+              ].map(opt => (
+                <label
+                  key={opt.value}
+                  className={`flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${
+                    formData.budget_type === opt.value ? 'border-gray-400 bg-gray-50' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="budget_type"
+                    value={opt.value}
+                    checked={formData.budget_type === opt.value}
+                    onChange={handleInputChange}
+                    className="w-4 h-4 text-gray-700"
+                  />
+                  <div>
+                    <div className="text-sm font-bold text-gray-900">{opt.label}</div>
+                    <div className="text-xs text-gray-500">{opt.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {/* Fixed */}
+            {formData.budget_type === 'fixed' && (
+              <div className="max-w-xs">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">Amount *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">$</span>
+                  <input
+                    type="number"
+                    name="fixed_budget"
+                    value={formData.fixed_budget}
+                    onChange={handleInputChange}
+                    placeholder="5000"
+                    min="0.01"
+                    step="0.01"
+                    className={`w-full pl-8 pr-4 py-2.5 border-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all ${errors.fixed_budget ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                  />
+                </div>
+                {errors.fixed_budget && <p className="text-xs text-red-600 font-medium mt-1">{errors.fixed_budget}</p>}
+              </div>
+            )}
+
+            {/* Hourly */}
+            {formData.budget_type === 'hourly' && (
+              <div>
+                <div className="grid grid-cols-2 gap-3 max-w-sm">
+                  {[
+                    { name: 'hourly_min_rate', label: 'Min /hr', placeholder: '25', error: errors.hourly_min_rate },
+                    { name: 'hourly_max_rate', label: 'Max /hr', placeholder: '50', error: errors.hourly_max_rate },
+                  ].map(field => (
+                    <div key={field.name}>
+                      <label className="block text-sm font-semibold text-gray-800 mb-1.5">{field.label} *</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">$</span>
+                        <input
+                          type="number"
+                          name={field.name}
+                          value={formData[field.name]}
+                          onChange={handleInputChange}
+                          placeholder={field.placeholder}
+                          min="0.01"
+                          step="0.01"
+                          className={`w-full pl-8 pr-3 py-2.5 border-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all ${field.error ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                        />
+                      </div>
+                      {field.error && <p className="text-xs text-red-600 mt-1">{field.error}</p>}
+                    </div>
+                  ))}
+                </div>
+                {errors.hourly && <p className="text-xs text-red-600 font-medium mt-2">{errors.hourly}</p>}
+              </div>
+            )}
+
+            {/* Duration */}
+            <div className="max-w-xs">
+              <label className="block text-sm font-semibold text-gray-800 mb-1.5">Duration *</label>
+              <select
+                name="duration"
+                value={formData.duration}
+                onChange={handleInputChange}
+                className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all ${errors.duration ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+              >
+                <option value="">Select duration</option>
+                <option value="less_than_1_month">Less than 1 month</option>
+                <option value="1_3_months">1–3 months</option>
+                <option value="3_6_months">3–6 months</option>
+                <option value="more_than_6_months">More than 6 months</option>
+              </select>
+              {errors.duration && <p className="text-xs text-red-600 font-medium mt-1">{errors.duration}</p>}
+            </div>
+          </section>
+
+          {/* Experience Level */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <Award className="h-4 w-4" /> Experience Level
+            </h3>
+
+            <div className="space-y-2">
+              {[
+                { value: 'entry',        label: 'Entry Level',   desc: 'New to the field' },
+                { value: 'intermediate', label: 'Intermediate',  desc: 'Substantial experience' },
+                { value: 'expert',       label: 'Expert',        desc: 'Deep expertise' },
+              ].map(level => (
+                <label
+                  key={level.value}
+                  className={`flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${
+                    formData.experience_level === level.value
+                      ? 'border-gray-400 bg-gray-50'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="experience_level"
+                    value={level.value}
+                    checked={formData.experience_level === level.value}
+                    onChange={handleInputChange}
+                    className="w-4 h-4 text-gray-700"
+                  />
+                  <div>
+                    <div className="text-sm font-bold text-gray-900">{level.label}</div>
+                    <div className="text-xs text-gray-500">{level.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {errors.experience_level && <p className="text-xs text-red-600 font-medium px-1">{errors.experience_level}</p>}
+          </section>
         </div>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-white flex justify-end gap-4 p-6 border-t border-gray-100">
+        {/* ── Footer ── */}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
           <button
-            onClick={handleCancel}
+            onClick={onClose}
             disabled={saving}
-            className="px-6 py-3 bg-gray-200 text-gray-900 rounded-xl hover:bg-gray-300 transition-colors font-bold disabled:opacity-50"
+            className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all font-bold disabled:opacity-50 flex items-center gap-2 shadow-lg"
+            className="px-5 py-2.5 bg-gray-700 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
           >
-            {saving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                Save Changes
-              </>
-            )}
+            {saving
+              ? <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> Saving...</>
+              : <><Save className="h-4 w-4" /> Save Changes</>
+            }
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body  // ← escapes sidebar layout entirely
   );
 }
