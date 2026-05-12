@@ -61,8 +61,8 @@ export default function FreelancerContractPage() {
   // DATA EXTRACTION HELPERS
   // ============================
   const formatMoney = (amount) => {
-    if (!amount) return '₹0';
-    return `₹${Number(amount).toLocaleString()}`;
+if (!amount) return '$0';
+  return `$${Number(amount).toLocaleString()}`;
   };
 
   const getOfferData = (contract) => {
@@ -366,7 +366,7 @@ export default function FreelancerContractPage() {
             <div className="bg-white rounded-xl border p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Total Earnings</p>
+                  <p className="text-sm text-gray-500">Total Budget</p>
                   <p className="text-xl font-bold text-purple-600">
                     {formatMoney(stats.totalEarnings)}
                   </p>
@@ -673,7 +673,7 @@ export default function FreelancerContractPage() {
             </div>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total Earnings</span>
+                <span className="text-sm text-gray-600">Total Budget</span>
                 <span className="font-medium text-gray-900">
                   {formatMoney(stats.totalEarnings)}
                 </span>

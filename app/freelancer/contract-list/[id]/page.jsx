@@ -2,7 +2,7 @@
 'use client';
 
 import { apiPrivate } from '@/lib/apiPrivate';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -70,6 +70,14 @@ import DocumentList from '@/lib/hooks/DocumentList';
 import DocumentUpload from '@/lib/hooks/DocumentUpload';
 import DocumentPreview from '@/lib/hooks/DocumentPreview';
 import TrackingPolicyModal from '@/components/freelancer/TrackingPolicyModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 // Utility function for better error handling
 const fetchWithAuth = async (apiPrivate, endpoint, options = {}) => {
@@ -89,6 +97,17 @@ const fetchWithAuth = async (apiPrivate, endpoint, options = {}) => {
     }
     throw error;
   }
+};
+
+const formatCurrency = (amount, options = {}) => {
+  const value = Number(amount || 0);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    ...options,
+  }).format(value);
 };
 
 export default function FreelancerContractDetailPage() {
@@ -111,6 +130,120 @@ export default function FreelancerContractDetailPage() {
 
   // Tracking Policy states
   const [showTrackingPolicy, setShowTrackingPolicy] = useState(false);
+
+  const [dialogState, setDialogState] = useState({
+    open: false,
+    type: 'alert',
+    title: '',
+    message: '',
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    placeholder: '',
+    inputValue: '',
+    resolve: null,
+  });
+  const dialogResolvedRef = useRef(false);
+
+  const openDialog = ({
+    type = 'alert',
+    title = 'Notice',
+    message = '',
+    confirmText = 'OK',
+    cancelText = 'Cancel',
+    placeholder = '',
+  }) =>
+    new Promise((resolve) => {
+      dialogResolvedRef.current = false;
+      setDialogState({
+        open: true,
+        type,
+        title,
+        message,
+        confirmText,
+        cancelText,
+        placeholder,
+        inputValue: '',
+        resolve,
+      });
+    });
+
+  const closeDialog = () => setDialogState((prev) => ({ ...prev, open: false }));
+
+  const handleDialogConfirm = () => {
+    if (!dialogState.resolve) {
+      closeDialog();
+      return;
+    }
+
+    dialogResolvedRef.current = true;
+
+    if (dialogState.type === 'confirm') {
+      dialogState.resolve(true);
+    } else if (dialogState.type === 'prompt') {
+      dialogState.resolve(dialogState.inputValue);
+    } else {
+      dialogState.resolve();
+    }
+
+    closeDialog();
+  };
+
+  const handleDialogCancel = () => {
+    if (!dialogState.resolve) {
+      closeDialog();
+      return;
+    }
+
+    dialogResolvedRef.current = true;
+
+    if (dialogState.type === 'confirm') {
+      dialogState.resolve(false);
+    } else if (dialogState.type === 'prompt') {
+      dialogState.resolve(null);
+    } else {
+      dialogState.resolve();
+    }
+
+    closeDialog();
+  };
+
+  const handleDialogInputChange = (event) => {
+    const value = event.target.value;
+    setDialogState((prev) => ({ ...prev, inputValue: value }));
+  };
+
+  const showAlert = (message, title = 'Notice') =>
+    openDialog({ type: 'alert', title, message, confirmText: 'OK', cancelText: '' });
+
+  const showConfirm = (
+    message,
+    title = 'Confirm',
+    confirmText = 'Yes',
+    cancelText = 'No'
+  ) =>
+    openDialog({
+      type: 'confirm',
+      title,
+      message,
+      confirmText,
+      cancelText,
+    });
+
+  const showPrompt = (
+    message,
+    title = 'Input Required',
+    placeholder = '',
+    confirmText = 'Submit',
+    cancelText = 'Cancel'
+  ) =>
+    openDialog({
+      type: 'prompt',
+      title,
+      message,
+      confirmText,
+      cancelText,
+      placeholder,
+    });
 
   useEffect(() => {
     if (id) {
@@ -184,7 +317,7 @@ export default function FreelancerContractDetailPage() {
       setShowUploadModal(false);
     } catch (err) {
       console.error('Error uploading document:', err);
-      alert('Failed to upload document. Please try again.');
+      await showAlert('Failed to upload document. Please try again.', 'Upload Failed');
     }
   };
 
@@ -199,7 +332,7 @@ export default function FreelancerContractDetailPage() {
   };
 
   const handleDeleteDocument = async (documentId) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+    if (!(await showConfirm('Are you sure you want to delete this document?', 'Delete Document', 'Delete', 'Cancel'))) return;
 
     try {
       await fetchWithAuth(apiPrivate, `/contracts/${id}/documents/${documentId}/`, {
@@ -211,7 +344,7 @@ export default function FreelancerContractDetailPage() {
       }
     } catch (err) {
       console.error('Delete error:', err);
-      alert('Failed to delete document.');
+      await showAlert('Failed to delete document.', 'Delete Failed');
     }
   };
 
@@ -224,7 +357,7 @@ export default function FreelancerContractDetailPage() {
       setFolders(prev => [...prev, res.data]);
     } catch (err) {
       console.error('Error creating folder:', err);
-      alert('Failed to create folder.');
+      await showAlert('Failed to create folder.', 'Folder Creation Failed');
     }
   };
 
@@ -233,7 +366,7 @@ export default function FreelancerContractDetailPage() {
   };
 
   const handleContractAction = async (action, endpoint, confirmationMessage, successCallback) => {
-    if (!confirm(confirmationMessage)) return;
+    if (!(await showConfirm(confirmationMessage, 'Confirm Action', 'Yes, continue', 'Cancel'))) return;
 
     setActionLoading(true);
     try {
@@ -243,17 +376,17 @@ export default function FreelancerContractDetailPage() {
       fetchContract();
       if (successCallback) successCallback();
     } catch (err) {
-      alert(`Unable to ${action} contract. Please try again.`);
+      await showAlert(`Unable to ${action} contract. Please try again.`, 'Action Failed');
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleActionWithInput = async (action, endpoint, promptMessage, confirmationMessage, successCallback) => {
-    const input = prompt(promptMessage);
-    if (!input) return;
+    const input = await showPrompt(promptMessage, 'Required Input', 'Type your response here', 'Continue', 'Cancel');
+    if (input === null || input.trim() === '') return;
 
-    if (!confirm(confirmationMessage)) return;
+    if (!(await showConfirm(confirmationMessage, 'Confirm Action', 'Yes, continue', 'Cancel'))) return;
 
     setActionLoading(true);
     try {
@@ -266,7 +399,7 @@ export default function FreelancerContractDetailPage() {
       fetchContract();
       if (successCallback) successCallback();
     } catch (err) {
-      alert(`Unable to ${action} contract. Please try again.`);
+      await showAlert(`Unable to ${action} contract. Please try again.`, 'Action Failed');
     } finally {
       setActionLoading(false);
     }
@@ -286,18 +419,23 @@ export default function FreelancerContractDetailPage() {
     'Are you sure you want to raise a dispute? This will pause all payments and require platform intervention.'
   );
 
-  const submitDeliverable = () => {
+  const submitDeliverable = async () => {
     // Check if tracking policy is required and accepted
     if (!contract?.tracking_required && contract?.tracking_policy !== null) {
-      if (!confirm('You need to accept the work tracking policy before submitting deliverables. Would you like to review the policy now?')) {
+      if (!(await showConfirm(
+        'You need to accept the work tracking policy before submitting deliverables. Would you like to review the policy now?',
+        'Tracking Policy Required',
+        'Review Policy',
+        'Cancel'
+      ))) {
         return;
       }
       setShowTrackingPolicy(true);
       return;
     }
 
-    const description = prompt('Enter a brief description of your deliverable:');
-    if (!description) return;
+    const description = await showPrompt('Enter a brief description of your deliverable:', 'Deliverable Description', 'Brief description', 'Continue', 'Cancel');
+    if (description === null || description.trim() === '') return;
 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -307,7 +445,7 @@ export default function FreelancerContractDetailPage() {
       const file = e.target.files[0];
       if (!file) return;
 
-      if (!confirm('Submit this deliverable to the client?')) return;
+      if (!(await showConfirm('Submit this deliverable to the client?', 'Submit Deliverable', 'Submit', 'Cancel'))) return;
 
       setActionLoading(true);
       try {
@@ -324,10 +462,10 @@ export default function FreelancerContractDetailPage() {
           },
         });
 
-        alert('Deliverable submitted successfully!');
+        await showAlert('Deliverable submitted successfully!', 'Success');
         fetchContract();
       } catch (err) {
-        alert('Failed to submit deliverable. Please try again.');
+        await showAlert('Failed to submit deliverable. Please try again.', 'Submission Failed');
       } finally {
         setActionLoading(false);
       }
@@ -340,19 +478,19 @@ export default function FreelancerContractDetailPage() {
   const handleTrackingPolicyAccepted = async () => {
     try {
       setContract(prev => ({ ...prev, tracking_required: true })); // backend sets this on accept
-      alert('Tracking policy accepted successfully! You can now use work tracking features.');
+      await showAlert('Tracking policy accepted successfully! You can now use work tracking features.', 'Policy Accepted');
     } catch (err) {
       console.error('Error updating tracking policy state:', err);
     }
   };
 
   // ✅ FIX: The modal itself already calls the API; this just handles local state after rejection
-  const handleTrackingPolicyRejected = () => {
-    alert('Tracking policy rejected. Some features like time tracking and deliverable submission may be limited.');
+  const handleTrackingPolicyRejected = async () => {
+    await showAlert('Tracking policy rejected. Some features like time tracking and deliverable submission may be limited.', 'Policy Rejected');
   };
 
-  const downloadContract = () => {
-    alert('Contract download feature would be implemented here.');
+  const downloadContract = async () => {
+    await showAlert('Contract download feature would be implemented here.', 'Download Contract');
   };
 
   const getStatusConfig = (status) => {
@@ -456,7 +594,7 @@ export default function FreelancerContractDetailPage() {
     return [
       {
         title: 'Your Rate',
-        value: amounts.isHourly ? `₹${amounts.freelancerEarnings.toFixed(2)}/hr` : `₹${amounts.freelancerEarnings.toFixed(2)}`,
+        value: amounts.isHourly ? `${formatCurrency(amounts.freelancerEarnings)}/hr` : formatCurrency(amounts.freelancerEarnings),
         subtitle: amounts.isHourly
           ? `After ${contract?.platform_fee_percentage || 0}% platform fee`
           : 'Fixed price project',
@@ -468,7 +606,7 @@ export default function FreelancerContractDetailPage() {
       },
       {
         title: 'Client Rate',
-        value: amounts.isHourly ? `₹${amounts.contractAmount.toFixed(2)}/hr` : `₹${amounts.contractAmount.toFixed(2)}`,
+        value: amounts.isHourly ? `${formatCurrency(amounts.contractAmount)}/hr` : formatCurrency(amounts.contractAmount),
         subtitle: amounts.isHourly ? 'Hourly rate' : 'Total project value',
         icon: CreditCard,
         iconColor: 'text-blue-600',
@@ -617,7 +755,7 @@ export default function FreelancerContractDetailPage() {
       case 'completed':
         actions.push({
           label: 'Request Review',
-          onClick: () => alert('Review request sent to client'),
+          onClick: () => showAlert('Review request sent to client', 'Review Request Sent'),
           icon: Star,
           color: 'bg-indigo-600 hover:bg-indigo-700',
           fullWidth: true
@@ -644,8 +782,8 @@ export default function FreelancerContractDetailPage() {
           },
           {
             label: 'Decline Contract',
-            onClick: () => {
-              const reason = prompt('Please provide a reason for declining (optional):');
+            onClick: async () => {
+              const reason = await showPrompt('Please provide a reason for declining (optional):', 'Decline Contract', 'Optional reason', 'Continue', 'Cancel');
               if (reason !== null) {
                 handleContractAction('decline', 'decline', 'Are you sure you want to decline this contract? This action cannot be undone.');
               }
@@ -696,7 +834,7 @@ export default function FreelancerContractDetailPage() {
                 Try Again
               </button>
               <button
-                onClick={() => router.push('/contract-list')}
+                onClick={() => router.push('freelancer/contract-list')}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Back to Contracts
@@ -718,7 +856,7 @@ export default function FreelancerContractDetailPage() {
             The contract you're looking for doesn't exist or you don't have access to it.
           </p>
           <button
-            onClick={() => router.push('/contract-list')}
+            onClick={() => router.push('/freelancer/contract-list')}
             className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
           >
             View All Contracts
@@ -742,7 +880,7 @@ export default function FreelancerContractDetailPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/contract-list')}
+                onClick={() => router.push('/freelancer/contract-list')}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -906,7 +1044,7 @@ export default function FreelancerContractDetailPage() {
                         <p className="font-medium text-gray-900 capitalize">{contract.rate_type}</p>
                         {contract.rate_type === 'hourly' && (
                           <p className="text-sm text-gray-600 mt-1">
-                            Hourly rate: ₹{contract.offer?.agreed_hourly_rate || '0.00'}/hour
+                            Hourly rate: {formatCurrency(contract.offer?.agreed_hourly_rate || 0)}/hour
                           </p>
                         )}
                       </div>
@@ -1005,8 +1143,7 @@ export default function FreelancerContractDetailPage() {
                         </div>
                       </div>
                       <p className="text-xl font-bold text-gray-900">
-                        ₹{amounts.contractAmount.toFixed(2)}
-                        {amounts.isHourly && '/hour'}
+                        {formatCurrency(amounts.contractAmount)}{amounts.isHourly ? '/hour' : ''}
                       </p>
                     </div>
 
@@ -1032,7 +1169,7 @@ export default function FreelancerContractDetailPage() {
                             <p className="text-sm text-gray-500">Based on estimated hours</p>
                           </div>
                         </div>
-                        <p className="text-lg font-semibold">₹{parseFloat(contract.offer.total_budget).toFixed(2)}</p>
+                        <p className="text-lg font-semibold">{formatCurrency(contract.offer.total_budget)}</p>
                       </div>
                     )}
 
@@ -1047,8 +1184,7 @@ export default function FreelancerContractDetailPage() {
                         </div>
                       </div>
                       <p className="text-lg font-semibold text-red-600">
-                        -₹{amounts.platformFee.toFixed(2)}
-                        {amounts.isHourly && '/hour'}
+                        -{formatCurrency(amounts.platformFee)}{amounts.isHourly ? '/hour' : ''}
                       </p>
                     </div>
 
@@ -1065,8 +1201,7 @@ export default function FreelancerContractDetailPage() {
                         </div>
                       </div>
                       <p className="text-2xl font-bold text-green-700">
-                        ₹{amounts.freelancerEarnings.toFixed(2)}
-                        {amounts.isHourly && '/hour'}
+                        {formatCurrency(amounts.freelancerEarnings)}{amounts.isHourly ? '/hour' : ''}
                       </p>
                     </div>
                   </div>
@@ -1086,7 +1221,7 @@ export default function FreelancerContractDetailPage() {
                               <p className="text-sm text-gray-500">Paid weekly for logged hours</p>
                             </div>
                           </div>
-                          <p className="text-lg font-bold">₹{amounts.freelancerEarnings.toFixed(2)}/hour</p>
+                          <p className="text-lg font-bold">{formatCurrency(amounts.freelancerEarnings)}/hour</p>
                         </div>
                         <p className="text-sm text-gray-600 text-center">
                           You will receive payments weekly based on approved timesheets
@@ -1101,7 +1236,7 @@ export default function FreelancerContractDetailPage() {
                             <p className="text-sm text-gray-500">Upon client approval of deliverables</p>
                           </div>
                         </div>
-                        <p className="text-lg font-bold">₹{amounts.freelancerEarnings.toFixed(2)}</p>
+                        <p className="text-lg font-bold">{formatCurrency(amounts.freelancerEarnings)}</p>
                       </div>
                     )}
                   </div>
@@ -1285,6 +1420,54 @@ export default function FreelancerContractDetailPage() {
           apiPrivate={apiPrivate}
         />
       )}
+
+      <Dialog open={dialogState.open} onOpenChange={(open) => {
+        if (!open && dialogState.open && !dialogResolvedRef.current) {
+          handleDialogCancel();
+        }
+        if (!open && dialogResolvedRef.current) {
+          dialogResolvedRef.current = false;
+        }
+        setDialogState((prev) => ({ ...prev, open }));
+      }}>
+        <DialogContent showCloseButton={false} className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{dialogState.title}</DialogTitle>
+            <DialogDescription>{dialogState.message}</DialogDescription>
+          </DialogHeader>
+
+          {dialogState.type === 'prompt' && (
+            <div className="mt-4">
+              <input
+                type="text"
+                value={dialogState.inputValue}
+                onChange={handleDialogInputChange}
+                placeholder={dialogState.placeholder}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              />
+            </div>
+          )}
+
+          <DialogFooter>
+            {dialogState.type !== 'alert' && (
+              <button
+                type="button"
+                onClick={handleDialogCancel}
+                className="inline-flex justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                {dialogState.cancelText || 'Cancel'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleDialogConfirm}
+              className="inline-flex justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              {dialogState.confirmText || 'OK'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

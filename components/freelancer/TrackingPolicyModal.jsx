@@ -17,6 +17,7 @@ export default function TrackingPolicyModal({
   const [errorDetail, setErrorDetail] = useState(null);
   const [accepting, setAccepting] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
+  const [dialog, setDialog] = useState(null);
   const contentRef = useRef(null);
 
   useEffect(() => {
@@ -79,25 +80,31 @@ export default function TrackingPolicyModal({
     }
   };
 
-  const handleAccept = async () => {
-    if (!hasScrolled) {
-      alert('Please read the entire policy before accepting.');
-      return;
-    }
+  const closeDialog = () => setDialog(null);
 
-    if (!confirm('By accepting this policy, you consent to work tracking as described. Do you want to proceed?')) {
-      return;
-    }
+  const openDialog = ({ title, message, confirmLabel = 'OK', cancelLabel = 'Cancel', onConfirm, showCancel = true }) => {
+    setDialog({ title, message, confirmLabel, cancelLabel, onConfirm, showCancel });
+  };
 
+  const acceptPolicy = async () => {
+    closeDialog();
     setAccepting(true);
     try {
       await apiPrivate.post('tracking/policy/accept/', {
         contract_id: contractId
       });
 
-      if (onAccept) onAccept();
-      alert('Tracking policy accepted successfully!');
-      onClose();
+      setDialog({
+        title: 'Policy Accepted',
+        message: 'Tracking policy accepted successfully! You can now continue working under this contract.',
+        confirmLabel: 'Close',
+        showCancel: false,
+        onConfirm: () => {
+          closeDialog();
+          if (onAccept) onAccept();
+          onClose();
+        }
+      });
     } catch (err) {
       console.error('❌ Policy accept failed:', err);
       const errorMsg =
@@ -105,18 +112,51 @@ export default function TrackingPolicyModal({
         err?.response?.data?.error ||
         err?.response?.data?.detail ||
         'Failed to accept policy. Please try again.';
-      alert(errorMsg);
+      openDialog({
+        title: 'Unable to Accept Policy',
+        message: errorMsg,
+        confirmLabel: 'OK',
+        showCancel: false
+      });
     } finally {
       setAccepting(false);
     }
   };
 
-  const handleReject = () => {
-    if (!confirm('Are you sure you want to reject the tracking policy? This may affect your ability to work on this contract.')) {
+  const handleAccept = () => {
+    if (!hasScrolled) {
+      openDialog({
+        title: 'Read the Policy',
+        message: 'Please scroll to the bottom and read the entire policy before accepting.',
+        confirmLabel: 'OK',
+        showCancel: false
+      });
       return;
     }
+
+    openDialog({
+      title: 'Confirm Acceptance',
+      message: 'By accepting this policy, you consent to work tracking as described. Do you want to proceed?',
+      confirmLabel: 'Accept',
+      cancelLabel: 'Cancel',
+      onConfirm: acceptPolicy
+    });
+  };
+
+  const rejectPolicy = () => {
+    closeDialog();
     if (onReject) onReject();
     onClose();
+  };
+
+  const handleReject = () => {
+    openDialog({
+      title: 'Reject Tracking Policy',
+      message: 'Are you sure you want to reject the tracking policy? This may affect your ability to work on this contract.',
+      confirmLabel: 'Reject',
+      cancelLabel: 'Cancel',
+      onConfirm: rejectPolicy
+    });
   };
 
   const getPolicyContent = () => {
@@ -237,7 +277,7 @@ Effective: ${policy?.created_at
 
   // ─── MAIN MODAL ───────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className=" fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
 
         {/* Header */}
@@ -351,6 +391,46 @@ Effective: ${policy?.created_at
           )}
         </div>
       </div>
+      {dialog && (
+        <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-100">
+                  {dialog.onConfirm ? (
+                    <CheckCircle className="h-5 w-5 text-indigo-600" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold text-slate-900">{dialog.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 whitespace-pre-line">{dialog.message}</p>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-slate-200 bg-slate-50 p-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              {dialog.showCancel !== false && (
+                <button
+                  onClick={closeDialog}
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  {dialog.cancelLabel}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (dialog.onConfirm) dialog.onConfirm();
+                  else closeDialog();
+                }}
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+              >
+                {dialog.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

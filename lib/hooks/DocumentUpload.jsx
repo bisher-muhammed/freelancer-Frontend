@@ -3,6 +3,7 @@
 
 import { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, FileText, FileSpreadsheet } from 'lucide-react';
+import { formatFileSize } from '@/lib/utils';
 
 const DocumentUpload = ({ 
   folders, 
@@ -31,14 +32,6 @@ const DocumentUpload = ({
     } else {
       return <FileText className="w-5 h-5 text-gray-400" />;
     }
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const handleFileSelect = (e) => {

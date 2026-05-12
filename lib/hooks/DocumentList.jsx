@@ -13,7 +13,8 @@ import {
   Calendar,
   User
 } from 'lucide-react';
-import { formatFileSize } from '@/lib/utils';
+import { formatFileSize } from '@/lib/utils'
+
 
 const DocumentList = ({ 
   documents, 
