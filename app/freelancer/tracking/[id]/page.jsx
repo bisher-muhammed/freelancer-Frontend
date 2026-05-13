@@ -17,7 +17,6 @@ import {
   Download,
   Video,
   ChevronRight,
-  ChevronLeft as ChevronLeftIcon,
   X,
   ArrowLeft,
   AlertTriangle,
@@ -44,6 +43,7 @@ export default function SessionTimelineDetail() {
   const [selectedBlockForExplanation, setSelectedBlockForExplanation] = useState(null);
   const modalRef = useRef(null);
   const thumbnailContainerRef = useRef(null);
+  const savedScrollY = useRef(0);
 
   const THUMBNAILS_PER_VIEW = 3;
 
@@ -106,36 +106,39 @@ export default function SessionTimelineDetail() {
     }
   }, [sessionId]);
 
-  // Lock body scroll when modal is open
+  // FIX: Lock body scroll without losing scroll position
   useEffect(() => {
     if (selectedScreenshot) {
-      document.body.style.overflow = 'hidden';
+      savedScrollY.current = window.scrollY;
       document.body.style.position = 'fixed';
+      document.body.style.top = `-${savedScrollY.current}px`;
       document.body.style.width = '100%';
       document.documentElement.style.overflow = 'hidden';
-      
-      // Prevent scrolling on body when modal is open
+
       const handleWheel = (e) => {
         if (modalRef.current && modalRef.current.contains(e.target)) {
           return;
         }
         e.preventDefault();
       };
-      
+
       window.addEventListener('wheel', handleWheel, { passive: false });
       return () => {
         window.removeEventListener('wheel', handleWheel);
       };
     } else {
-      document.body.style.overflow = 'unset';
-      document.body.style.position = 'static';
-      document.documentElement.style.overflow = 'unset';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.documentElement.style.overflow = '';
+      window.scrollTo(0, savedScrollY.current);
     }
-    
+
     return () => {
-      document.body.style.overflow = 'unset';
-      document.body.style.position = 'static';
-      document.documentElement.style.overflow = 'unset';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.documentElement.style.overflow = '';
     };
   }, [selectedScreenshot]);
 
@@ -163,7 +166,6 @@ export default function SessionTimelineDetail() {
       const halfView = Math.floor(THUMBNAILS_PER_VIEW / 2);
       let newStartIndex = currentSlideIndex - halfView;
       
-      // Adjust boundaries
       if (newStartIndex < 0) {
         newStartIndex = 0;
       } else if (newStartIndex + THUMBNAILS_PER_VIEW > allScreenshots.length) {
@@ -235,7 +237,8 @@ export default function SessionTimelineDetail() {
     const endedAt = block.ended_at ? new Date(block.ended_at) : new Date();
     const totalSeconds = Math.max(Math.floor((endedAt - startedAt) / 1000), 0);
     
-    const idleSeconds = block.idle_seconds || (block.idle_ratio ? Math.floor(totalSeconds * block.idle_ratio) : 0);
+    // FIX: idle_seconds now comes from the backend serializer
+    const idleSeconds = block.idle_seconds || 0;
     const workedSeconds = Math.max(totalSeconds - idleSeconds, 0);
     
     let productivity = 0;
@@ -322,24 +325,12 @@ export default function SessionTimelineDetail() {
     }
   };
 
+  // FIX: Use API_BASE_URL instead of undefined backendUrl
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "";
-    
-    console.log("Processing image path:", imagePath);
-    
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    
-    if (imagePath.startsWith('/media/')) {
-      return `${API_BASE_URL}${imagePath}`;
-    }
-    
-    if (imagePath.startsWith('media/')) {
-      return `${API_BASE_URL}/${imagePath}`;
-    }
-    
-    return `${API_BASE_URL}/media/screenshots/${imagePath}`;
+    if (imagePath.startsWith("http")) return imagePath;
+    if (imagePath.startsWith("/")) return `${API_BASE_URL}${imagePath}`;
+    return `${API_BASE_URL}/${imagePath}`;
   };
 
   // Calculate visible thumbnails
@@ -348,7 +339,7 @@ export default function SessionTimelineDetail() {
     Math.min(thumbnailStartIndex + THUMBNAILS_PER_VIEW, allScreenshots.length)
   );
 
-  // Check if any time block has is_flagged = true
+  // FIX: is_flagged now comes from backend serializer
   const hasDisputedBlocks = sessionData?.time_blocks?.some(block => block.is_flagged) || false;
 
   if (loading) {
@@ -421,32 +412,24 @@ export default function SessionTimelineDetail() {
   const totalBlocks = time_blocks.length;
   const totalScreenshots = allScreenshots.length;
 
-  // FIXED: Use session.total_seconds directly instead of double-counting
   const sessionDuration = total_seconds || 0;
 
-  // Calculate worked and idle time from all time blocks
+  // FIX: idle_seconds now reliably comes from backend, no more idle_ratio fallback needed
   const sessionTotals = time_blocks.reduce((totals, block) => {
     const blockTimeData = calculateWorkedTime(block);
-    
     return {
       workedSeconds: totals.workedSeconds + blockTimeData.worked,
       idleSeconds: totals.idleSeconds + blockTimeData.idle
     };
   }, { workedSeconds: 0, idleSeconds: 0 });
 
-  // Use sessionDuration as total, and ensure worked + idle = total
   const sessionProductivity = sessionDuration > 0 
     ? Math.round((sessionTotals.workedSeconds / sessionDuration) * 100)
     : 0;
 
-  const sessionStart = new Date(started_at);
-  const sessionEnd = ended_at ? new Date(ended_at) : new Date();
-
   return (
     <>
-      {/* Main Content with header offset */}
       <div className="min-h-screen bg-white pt-16">
-        {/* Fixed Header within content */}
         <div className="sticky top-16 z-30 bg-white border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="py-4">
@@ -485,7 +468,6 @@ export default function SessionTimelineDetail() {
                 </div>
               </div>
               
-              {/* Session Summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center gap-3">
@@ -547,9 +529,7 @@ export default function SessionTimelineDetail() {
           </div>
         </div>
 
-        {/* Main Content Area */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Session Time Info */}
           <div className="bg-gray-50 rounded-xl p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -610,7 +590,6 @@ export default function SessionTimelineDetail() {
             </div>
           </div>
 
-          {/* All Screenshots Gallery */}
           {allScreenshots.length > 0 && (
             <div className="bg-white border rounded-xl p-6 mb-8">
               <div className="flex items-center justify-between mb-4">
@@ -635,7 +614,6 @@ export default function SessionTimelineDetail() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"
                           onError={(e) => {
-                            console.error("Failed to load image:", imageUrl);
                             e.target.onerror = null;
                             const parent = e.target.parentElement;
                             parent.innerHTML = `
@@ -671,16 +649,15 @@ export default function SessionTimelineDetail() {
             </div>
           )}
 
-          {/* Timeline Blocks */}
           <div className="space-y-6">
             {time_blocks.map((block, blockIndex) => {
               const blockTimeData = calculateWorkedTime(block);
               const isExpanded = expandedBlocks[block.id];
+              // FIX: is_flagged now comes from serializer
               const isBlockFlagged = block.is_flagged || false;
               
               return (
                 <div key={block.id} className="border rounded-xl overflow-hidden">
-                  {/* Block Header */}
                   <div 
                     className={`bg-white p-6 cursor-pointer hover:bg-gray-50 transition-colors ${isBlockFlagged ? 'border-l-4 border-l-amber-500' : ''}`}
                     onClick={() => toggleBlockExpansion(block.id)}
@@ -715,7 +692,7 @@ export default function SessionTimelineDetail() {
                                 </span>
                                 <button
                                   onClick={(e) => {
-                                    e.stopPropagation(); // Prevent expanding/collapsing the block
+                                    e.stopPropagation();
                                     setSelectedBlockForExplanation(block.id);
                                     setExplanationFormOpen(true);
                                   }}
@@ -745,6 +722,7 @@ export default function SessionTimelineDetail() {
                         </div>
                         
                         <div className="flex items-center gap-2">
+                          {/* FIX: removed duplicate ChevronLeft — use single import consistently */}
                           <ChevronLeft className={`w-4 h-4 transition-transform ${
                             isExpanded ? "-rotate-90" : "rotate-90"
                           }`} />
@@ -752,7 +730,6 @@ export default function SessionTimelineDetail() {
                       </div>
                     </div>
                     
-                    {/* Progress Bar */}
                     <div className="mt-4">
                       <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
                         <span>Productivity: {blockTimeData.productivity}%</span>
@@ -775,7 +752,6 @@ export default function SessionTimelineDetail() {
                     </div>
                   </div>
                   
-                  {/* Expanded Content */}
                   {isExpanded && (
                     <div className="border-t bg-gray-50 p-6">
                       {block.windows && block.windows.length > 0 ? (
@@ -783,6 +759,7 @@ export default function SessionTimelineDetail() {
                           <div key={window.id || windowIndex} className="mb-6 last:mb-0">
                             <div className="flex items-center gap-2 mb-4">
                               <Monitor className="w-4 h-4 text-gray-400" />
+                              {/* FIX: window_title now comes from serializer */}
                               <span className="text-sm font-medium text-gray-700">
                                 {window.window_title || `Window ${windowIndex + 1}`}
                               </span>
@@ -810,7 +787,6 @@ export default function SessionTimelineDetail() {
                                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                           loading="lazy"
                                           onError={(e) => {
-                                            console.error("Failed to load screenshot:", imageUrl);
                                             e.target.onerror = null;
                                             const parent = e.target.parentElement;
                                             parent.innerHTML = `
@@ -839,6 +815,7 @@ export default function SessionTimelineDetail() {
                                             "Unknown time"
                                           }
                                         </p>
+                                        {/* FIX: is_flagged now comes from serializer */}
                                         <p className={`text-xs truncate ${
                                           screenshot.is_flagged ? "text-amber-600" : "text-green-600"
                                         }`}>
@@ -883,14 +860,12 @@ export default function SessionTimelineDetail() {
         </div>
       </div>
 
-      {/* Screenshot Modal - Full screen with proper z-index */}
       {selectedScreenshot && (
         <div 
           ref={modalRef}
           className="fixed inset-0 bg-black bg-opacity-95 z-[999999] flex items-center justify-center"
         >
           <div className="relative w-full max-w-7xl h-full flex flex-col p-4">
-            {/* Top Controls */}
             <div className="flex items-center justify-between mb-4 z-[9999999]">
               <button
                 onClick={closeScreenshotModal}
@@ -918,36 +893,30 @@ export default function SessionTimelineDetail() {
               </div>
             </div>
             
-            {/* Main Image Container - Centered */}
             <div className="flex-1 flex items-center justify-center relative">
-              {/* Previous Button */}
               {currentSlideIndex > 0 && (
                 <button
                   onClick={prevSlide}
                   className="absolute left-4 top-1/2 transform -translate-y-1/2 p-4 bg-black bg-opacity-60 hover:bg-opacity-80 text-white rounded-full transition-all backdrop-blur-sm"
                   title="Previous (←)"
                 >
-                  <ChevronLeftIcon className="w-6 h-6" />
+                  <ChevronLeft className="w-6 h-6" />
                 </button>
               )}
               
-              {/* Image Container with centered positioning */}
               <div className="flex flex-col items-center justify-center w-full h-full">
-                {/* Image */}
                 <div className="flex-1 flex items-center justify-center max-w-full max-h-[70vh] px-4 ml-10">
                   <img
                     src={getImageUrl(selectedScreenshot.image)}
                     alt="Screenshot"
                     className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
                     onError={(e) => {
-                      console.error("Failed to load modal image:", getImageUrl(selectedScreenshot.image));
                       e.target.onerror = null;
                       e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600' viewBox='0 0 800 600'%3E%3Crect width='800' height='600' fill='%232d3748'/%3E%3Ctext x='400' y='300' font-family='Arial' font-size='24' text-anchor='middle' dy='.3em' fill='%23cbd5e0'%3EScreenshot not available%3C/text%3E%3C/svg%3E";
                     }}
                   />
                 </div>
                 
-                {/* Screenshot Info - Centered below image */}
                 <div className="mt-4 px-4 py-3 bg-black bg-opacity-70 backdrop-blur-md rounded-lg text-white max-w-2xl w-full">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center md:text-left">
@@ -977,7 +946,6 @@ export default function SessionTimelineDetail() {
                 </div>
               </div>
               
-              {/* Next Button */}
               {currentSlideIndex < allScreenshots.length - 1 && (
                 <button
                   onClick={nextSlide}
@@ -989,22 +957,18 @@ export default function SessionTimelineDetail() {
               )}
             </div>
             
-            {/* Thumbnail Carousel */}
             {allScreenshots.length > 1 && (
               <div className="mt-6 px-4">
                 <div className="flex items-center justify-center gap-2">
-                  {/* Previous Thumbnails Button */}
                   {thumbnailStartIndex > 0 && (
                     <button
                       onClick={prevThumbnails}
                       className="p-2 bg-black bg-opacity-60 hover:bg-opacity-80 text-white rounded-full transition-all backdrop-blur-sm"
-                      title="Previous thumbnails"
                     >
-                      <ChevronLeftIcon className="w-4 h-4" />
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                   )}
                   
-                  {/* Thumbnail Container */}
                   <div 
                     ref={thumbnailContainerRef}
                     className="flex gap-2 justify-center min-w-0"
@@ -1040,19 +1004,16 @@ export default function SessionTimelineDetail() {
                     })}
                   </div>
                   
-                  {/* Next Thumbnails Button */}
                   {thumbnailStartIndex + THUMBNAILS_PER_VIEW < allScreenshots.length && (
                     <button
                       onClick={nextThumbnails}
                       className="p-2 bg-black bg-opacity-60 hover:bg-opacity-80 text-white rounded-full transition-all backdrop-blur-sm"
-                      title="Next thumbnails"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   )}
                 </div>
                 
-                {/* Thumbnail Indicator */}
                 <div className="text-center mt-2">
                   <p className="text-sm text-gray-400">
                     {Math.min(thumbnailStartIndex + 1, allScreenshots.length)} - 
@@ -1066,7 +1027,6 @@ export default function SessionTimelineDetail() {
         </div>
       )}
 
-      {/* Explanation Form Modal */}
       <TimeBlockExplanationForm
         blockId={selectedBlockForExplanation}
         isOpen={explanationFormOpen}
@@ -1076,7 +1036,6 @@ export default function SessionTimelineDetail() {
           setSelectedBlockForExplanation(null);
         }}
         onExplanationSubmitted={() => {
-          // Refresh session data after explanation is submitted
           fetchSessionTimeline();
         }}
       />

@@ -29,22 +29,18 @@ const ScreenshotsGallery = ({ screenshots, apiBaseUrl }) => {
   const THUMBNAILS_PER_VIEW = 3;
 
   const getImageUrl = (imagePath) => {
-    if (!imagePath) return "";
-    
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    
-    if (imagePath.startsWith('/media/')) {
-      return `${apiBaseUrl}${imagePath}`;
-    }
-    
-    if (imagePath.startsWith('media/')) {
-      return `${apiBaseUrl}/${imagePath}`;
-    }
-    
-    return `${apiBaseUrl}/media/screenshots/${imagePath}`;
-  };
+  if (!imagePath) return "";
+
+  if (imagePath.startsWith("http")) {
+    return imagePath;
+  }
+
+  if (imagePath.startsWith("/")) {
+    return `${backendUrl}${imagePath}`;
+  }
+
+  return `${backendUrl}/${imagePath}`;
+};
 
   const handleScreenshotClick = (screenshot, index) => {
     setSelectedScreenshot(screenshot);
