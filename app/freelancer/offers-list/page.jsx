@@ -125,12 +125,32 @@ export default function FreelancerOffersListPage() {
   };
 
   const formatCurrency = (amount) => {
+    const value = Number(amount);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(amount);
+    }).format(Number.isFinite(value) ? value : 0);
+  };
+
+  const parseOfferBudget = (offer) => {
+    const raw = offer?.total_budget ?? offer?.totalBudget ?? offer?.budget ?? offer?.fixed_budget ?? 0;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const getAverageBudget = (offerList) => {
+    const validBudgets = offerList
+      .map(parseOfferBudget)
+      .filter((value) => value > 0);
+
+    if (!validBudgets.length) {
+      return 0;
+    }
+
+    const total = validBudgets.reduce((sum, value) => sum + value, 0);
+    return total / validBudgets.length;
   };
 
   const formatDate = (dateString) => {
@@ -297,9 +317,7 @@ export default function FreelancerOffersListPage() {
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Average Budget</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(
-                      offers.reduce((sum, offer) => sum + (offer.total_budget || 0), 0) / (offers.length || 1)
-                    )}
+                    {formatCurrency(getAverageBudget(offers))}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">

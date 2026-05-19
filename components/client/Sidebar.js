@@ -51,7 +51,6 @@ export default function ClientSidebar({ onClose }) {
       icon: MessageSquare,
       label: "Messages",
       href: "/client/chat",
-      badge: 3,
     },
 
     {
@@ -64,7 +63,6 @@ export default function ClientSidebar({ onClose }) {
       icon: MessageSquare,
       label: "Meetings",
       href: "/client/meetings",
-      badge: 3,
     },
      {
       icon: Lock,

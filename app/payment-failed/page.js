@@ -1,6 +1,6 @@
 'use client';
-import React, { use, useState } from 'react';
-import { XCircle, ArrowLeft, RefreshCw, HelpCircle, CreditCard } from 'lucide-react';
+import React, { useState } from 'react';
+import { XCircle, ArrowLeft, RefreshCw, HelpCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function PaymentFailedPage() {
@@ -21,24 +21,6 @@ export default function PaymentFailedPage() {
   const handleContactSupport = () => {
     router.push('/support');
   };
-
-  const commonReasons = [
-    {
-      icon: <CreditCard className="w-5 h-5" />,
-      title: 'Insufficient Funds',
-      description: 'Your card may not have enough balance'
-    },
-    {
-      icon: <XCircle className="w-5 h-5" />,
-      title: 'Card Declined',
-      description: 'Your bank declined the transaction'
-    },
-    {
-      icon: <HelpCircle className="w-5 h-5" />,
-      title: 'Incorrect Details',
-      description: 'Card number or CVV may be incorrect'
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-red-900/30 flex items-center justify-center p-6">
@@ -66,62 +48,35 @@ export default function PaymentFailedPage() {
             {/* Error Message */}
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
               <h3 className="text-lg font-semibold text-white mb-2">
-                What happened?
+                What Happened?
               </h3>
               <p className="text-gray-300 leading-relaxed">
-                Your payment could not be completed at this time. This may be due to insufficient funds, 
-                an issue with your payment method, or a declined transaction by your bank.
+                Your payment could not be completed at this time. Please check your payment details and try again. 
+                If the problem persists, contact our support team for assistance.
               </p>
             </div>
 
-            {/* Common Reasons */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Common Reasons for Payment Failure
-              </h3>
-              <div className="space-y-3">
-                {commonReasons.map((reason, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start gap-4 bg-slate-800/30 rounded-xl p-4 hover:bg-slate-800/50 transition-colors"
-                  >
-                    <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center text-red-400 flex-shrink-0">
-                      {reason.icon}
-                    </div>
-                    <div>
-                      <h4 className="text-white font-semibold mb-1">
-                        {reason.title}
-                      </h4>
-                      <p className="text-gray-400 text-sm">
-                        {reason.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* What You Can Do */}
+            {/* Quick Tips */}
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-3">
-                What You Can Do
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Quick Tips to Resolve
               </h3>
-              <ul className="space-y-2 text-gray-300">
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-400 mt-1">1.</span>
-                  <span>Check your payment details and try again</span>
+              <ul className="space-y-3 text-gray-300">
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-400 font-bold flex-shrink-0">•</span>
+                  <span>Verify your card details are correct</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-400 mt-1">2.</span>
-                  <span>Ensure you have sufficient funds in your account</span>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-400 font-bold flex-shrink-0">•</span>
+                  <span>Ensure you have sufficient funds available</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-400 mt-1">3.</span>
-                  <span>Contact your bank to authorize the transaction</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-400 mt-1">4.</span>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-400 font-bold flex-shrink-0">•</span>
                   <span>Try using a different payment method</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-blue-400 font-bold flex-shrink-0">•</span>
+                  <span>Contact your bank if issues continue</span>
                 </li>
               </ul>
             </div>

@@ -43,6 +43,14 @@ import DocumentList from '@/lib/hooks/DocumentList';
 import DocumentUpload from '@/lib/hooks/DocumentUpload';
 import DocumentPreview from '@/lib/hooks/DocumentPreview';
 import TerminationRequestModal from '@/lib/hooks/TerminationRequestModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog';
 
 export default function ClientContractDetailPage() {
   const { id } = useParams();
@@ -65,6 +73,12 @@ export default function ClientContractDetailPage() {
   // Termination modal
   const [showTerminationModal, setShowTerminationModal] = useState(false);
 
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTitle, setDialogTitle] = useState('');
+  const [dialogMessage, setDialogMessage] = useState('');
+
+  // FIX 1: was `useEffect(() {` — missing arrow `=>`
   useEffect(() => {
     if (id) {
       fetchContract();
@@ -107,6 +121,12 @@ export default function ClientContractDetailPage() {
   };
 
   // ── Document actions ─────────────────────────────────────────────────────
+  const openDialog = (title, message) => {
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setDialogOpen(true);
+  };
+
   const handleUploadDocument = async (file, folderId) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -120,7 +140,7 @@ export default function ClientContractDetailPage() {
       setShowUploadModal(false);
     } catch (err) {
       console.error('Error uploading document:', err);
-      alert('Failed to upload document. Please try again.');
+      openDialog('Upload Failed', 'Failed to upload document. Please try again.');
     }
   };
 
@@ -142,7 +162,7 @@ export default function ClientContractDetailPage() {
       if (previewDocument?.id === documentId) setPreviewDocument(null);
     } catch (err) {
       console.error('Delete error:', err);
-      alert('Failed to delete document.');
+      openDialog('Delete Failed', 'Failed to delete document.');
     }
   };
 
@@ -152,7 +172,7 @@ export default function ClientContractDetailPage() {
       setFolders(prev => [...prev, res.data]);
     } catch (err) {
       console.error('Error creating folder:', err);
-      alert('Failed to create folder.');
+      openDialog('Folder Creation Failed', 'Failed to create folder.');
     }
   };
 
@@ -164,10 +184,11 @@ export default function ClientContractDetailPage() {
       await apiPrivate.post(`/contracts/${id}/terminate/`, { reason });
       setShowTerminationModal(false);
       await fetchContract();
-      alert('Termination request submitted successfully!');
+      openDialog('Success', 'Termination request submitted successfully!');
     } catch (err) {
       console.error('Error submitting termination request:', err);
-      alert(
+      openDialog(
+        'Termination Request Failed',
         err.response?.data?.detail ||
         err.response?.data?.message ||
         'Failed to submit termination request. Please try again.'
@@ -178,13 +199,13 @@ export default function ClientContractDetailPage() {
   };
 
   const downloadContract = () => {
-    alert('Contract download feature will be available soon.');
+    openDialog('Coming Soon', 'Contract download feature will be available soon.');
   };
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const formatMoney = (amount) => {
-    if (!amount) return '₹0';
-    return `₹${Number(amount).toLocaleString()}`;
+    if (!amount) return '$0';
+    return `$${Number(amount).toLocaleString('en-US')}`;
   };
 
   const getOfferData = (contract) => {
@@ -396,7 +417,7 @@ export default function ClientContractDetailPage() {
       case 'completed':
         return [{
           label:    'Leave a Review',
-          onClick:  () => alert('Review feature coming soon!'),
+          onClick:  () => openDialog('Coming Soon', 'Review feature coming soon!'),
           icon:     Star,
           color:    'bg-indigo-600 hover:bg-indigo-700 text-white',
           fullWidth: true,
@@ -405,12 +426,13 @@ export default function ClientContractDetailPage() {
       case 'disputed':
         return [{
           label:    'Contact Support',
-          onClick:  () => alert('Please contact support at support@freelancerhub.com'),
+          onClick:  () => openDialog('Contact Support', 'Please contact support at support@freelancerhub.com'),
           icon:     HelpCircle,
           color:    'bg-orange-600 hover:bg-orange-700 text-white',
           fullWidth: true,
         }];
 
+      // FIX 2: stray `}` was closing the switch here, leaving `default` orphaned outside it
       default:
         return [];
     }
@@ -824,6 +846,24 @@ export default function ClientContractDetailPage() {
           isLoading={actionLoading}
         />
       )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent showCloseButton={false} className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setDialogOpen(false)}
+              className="inline-flex justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              OK
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

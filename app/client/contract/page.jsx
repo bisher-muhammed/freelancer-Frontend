@@ -142,8 +142,8 @@ export default function ClientContractPage() {
   // DATA EXTRACTION HELPERS
   // ============================
   const formatMoney = (amount) => {
-    if (!amount) return '₹0';
-    return `₹${Number(amount).toLocaleString()}`;
+    if (!amount) return '$0';
+    return `$${Number(amount).toLocaleString()}`;
   };
 
   // Extract offer data safely
@@ -204,7 +204,7 @@ export default function ClientContractPage() {
     const stats = {
       total: contracts.length,
       active: contracts.filter((c) => c.status === 'active').length,
-      completed: contracts.filter((c) => c.status === 'completed').length,
+      completed: contracts.filter((c) => c.status === 'ended').length,
       disputed: contracts.filter((c) => c.status === 'disputed').length,
       pending: contracts.filter((c) => c.status === 'pending').length,
       terminated: contracts.filter((c) => c.status === 'terminated').length
@@ -311,13 +311,6 @@ export default function ClientContractPage() {
                 <Shield className="w-5 h-5 text-indigo-600" />
                 <span className="text-sm text-gray-500">Client Dashboard</span>
               </div>
-              <button
-                onClick={() => router.push('/client/contracts/create')}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2"
-              >
-                <Briefcase className="w-4 h-4" />
-                New Contract
-              </button>
             </div>
           </div>
 

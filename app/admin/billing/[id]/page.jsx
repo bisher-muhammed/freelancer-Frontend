@@ -32,6 +32,14 @@ import ScreenshotsGallery from "@/components/admin/ScreenshotsGallery";
 import TimeBlocksList from "@/components/admin/TimeBlocksList";
 import PaymentProcess from "@/components/admin/PaymentProcess";
 import TimeBlockExplanationForm from "@/components/TimeBlockExplanationForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription
+} from "@/components/ui/dialog";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -48,6 +56,9 @@ export default function AdminBillingDetailPage() {
   const [allScreenshots, setAllScreenshots] = useState([]);
   const [showPaymentProcess, setShowPaymentProcess] = useState(false);
   const [freelancerInfo, setFreelancerInfo] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTitle, setDialogTitle] = useState("");
+  const [dialogMessage, setDialogMessage] = useState("");
   
   // Time Block Explanation Form States
   const [showExplanationForm, setShowExplanationForm] = useState(false);
@@ -162,6 +173,12 @@ export default function AdminBillingDetailPage() {
     }
   }, [id]);
 
+  const openDialog = (title, message) => {
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setDialogOpen(true);
+  };
+
   useEffect(() => {
     if (id) {
       fetchData();
@@ -173,13 +190,16 @@ export default function AdminBillingDetailPage() {
       setProcessingAction(`${action}-${billingId}`);
       
       // Use the correct review endpoint from urls.py
-      await apiPrivate.post(`admin/billing-units/${billingId}/review/`, { action });
+      await apiPrivate.patch(`admin/billing-units/${billingId}/explanation/review/`, { action });
       await fetchData();
       
-      alert(`Billing unit ${action}d successfully!`);
+      openDialog("Success", `Billing unit ${action}d successfully!`);
     } catch (err) {
       console.error("Review error:", err);
-      alert(`Failed to ${action} billing unit: ${err.response?.data?.detail || err.message}`);
+      openDialog(
+        "Error",
+        `Failed to ${action} billing unit: ${err.response?.data?.detail || err.message}`
+      );
     } finally {
       setProcessingAction(null);
     }
@@ -188,7 +208,10 @@ export default function AdminBillingDetailPage() {
   const handlePaymentComplete = (payoutData) => {
     fetchData();
     setShowPaymentProcess(false);
-    alert(`Batch payment completed! Payout ID: ${payoutData.payout_id}, Status: ${payoutData.status}`);
+    openDialog(
+      "Payment Completed",
+      `Batch payment completed! Payout ID: ${payoutData.payout_id}, Status: ${payoutData.status}`
+    );
   };
 
   // Time Block Explanation Functions
@@ -440,7 +463,7 @@ export default function AdminBillingDetailPage() {
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 px-4 py-2 rounded-xl">
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-4 h-4 text-green-600" />
-                      <span className="font-bold text-green-700">₹{calculateAmount()}</span>
+                      <span className="font-bold text-green-700">${calculateAmount()}</span>
                       <span className="text-sm text-green-600">payable</span>
                     </div>
                   </div>
@@ -602,6 +625,24 @@ export default function AdminBillingDetailPage() {
           handlePaymentComplete={handlePaymentComplete}
         />
       )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent showCloseButton={false} className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setDialogOpen(false)}
+              className="inline-flex justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              OK
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Time Block Explanation Form Modal */}
       {showExplanationForm && selectedTimeBlock && (
@@ -802,7 +843,7 @@ const QuickStats = ({
       icon: CreditCard,
       iconColor: "indigo",
       label: "Hourly Rate",
-      value: `₹${billingData.hourly_rate}/hr`,
+      value: `$${billingData.hourly_rate}/hr`,
       bgColor: "indigo"
     }] : [])
   ];
@@ -828,7 +869,7 @@ const QuickStats = ({
                 <div>
                   <p className="text-sm text-gray-600">Calculated Amount</p>
                   <p className="font-bold text-green-700">
-                    ₹{calculateAmount()}
+                    ${calculateAmount()}
                   </p>
                 </div>
               </div>

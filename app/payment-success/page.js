@@ -49,40 +49,6 @@ export default function PaymentSuccessPage() {
           </div>
 
           <div className="p-8 space-y-6">
-            <div className="bg-slate-800/30 rounded-xl p-6 space-y-4">
-              <h2 className="text-xl font-semibold text-white mb-4">
-                Payment Details
-              </h2>
-              
-              <div className="flex justify-between items-center py-3 border-b border-gray-700/50">
-                <span className="text-gray-400">Transaction ID</span>
-                <span className="text-white font-mono text-sm">
-                  #TXN-{Math.random().toString(36).substr(2, 9).toUpperCase()}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center py-3 border-b border-gray-700/50">
-                <span className="text-gray-400">Plan</span>
-                <span className="text-white font-semibold">Premium Plan</span>
-              </div>
-
-              <div className="flex justify-between items-center py-3 border-b border-gray-700/50">
-                <span className="text-gray-400">Amount Paid</span>
-                <span className="text-green-400 font-bold text-xl">$39.00</span>
-              </div>
-
-              <div className="flex justify-between items-center py-3">
-                <span className="text-gray-400">Payment Date</span>
-                <span className="text-white">
-                  {new Date().toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-            </div>
-
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6">
               <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                 <Mail className="w-5 h-5 text-blue-400" />

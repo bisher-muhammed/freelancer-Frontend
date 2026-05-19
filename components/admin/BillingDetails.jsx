@@ -26,20 +26,17 @@ const BillingDetails = ({ billing, billingUnits }) => {
   };
 
   const formatCurrency = (amount) => {
-    if (amount === null || amount === undefined || amount === "" || isNaN(amount)) {
-      return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(0);
-    }
-    return new Intl.NumberFormat('en-IN', {
+    const formatter = new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(parseFloat(amount));
+    });
+
+    if (amount === null || amount === undefined || amount === "" || isNaN(amount)) {
+      return formatter.format(0);
+    }
+    return formatter.format(parseFloat(amount));
   };
 
   const formatDate = (dateString) => {

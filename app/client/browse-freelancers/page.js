@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Briefcase, DollarSign, Star, ChevronDown, Award, Filter } from "lucide-react";
+import { Search, MapPin, Briefcase, DollarSign, ChevronDown, Award, Filter } from "lucide-react";
 import { apiPrivate } from "@/lib/apiPrivate";
 
 export default function BrowseFreelancers() {
@@ -205,11 +205,6 @@ export default function BrowseFreelancers() {
                     <p className="text-slate-600 mb-2.5 font-medium text-base line-clamp-1">
                       {freelancer.title}
                     </p>
-                    <div className="flex items-center gap-1.5">
-                      <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-                      <span className="font-bold text-slate-900 text-base">4.9</span>
-                      <span className="text-slate-500 text-sm font-medium">(127 reviews)</span>
-                    </div>
                   </div>
                 </div>
 
@@ -264,10 +259,6 @@ export default function BrowseFreelancers() {
                     <span className="font-bold text-lg">${freelancer.hourly_rate}</span>
                     <span className="text-slate-500 font-medium">/hr</span>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-700">
-                    <Briefcase className="w-5 h-5 text-slate-500" />
-                    <span className="text-base font-semibold">156 jobs</span>
-                  </div>
                 </div>
 
                 <div className="flex items-center justify-between mb-5">
@@ -279,11 +270,6 @@ export default function BrowseFreelancers() {
                     Available Now
                   </span>
                 </div>
-
-                {/* View Profile Button */}
-                <button className="w-full py-4 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-bold text-base shadow-lg hover:shadow-xl active:scale-[0.98]">
-                  View Profile
-                </button>
               </div>
             ))
           )}

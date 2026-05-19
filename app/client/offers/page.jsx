@@ -128,13 +128,32 @@ export default function ClientOfferListPage() {
     });
   };
 
+  const parseNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
   const formatCurrency = (amount) => {
+    const numericAmount = parseNumber(amount);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(amount);
+    }).format(numericAmount);
+  };
+
+  const getOfferTotalBudget = (offer) => {
+    return parseNumber(offer?.total_budget ?? offer?.budget ?? 0);
+  };
+
+  const getOfferHourlyRate = (offer) => {
+    return parseNumber(offer?.agreed_hourly_rate ?? offer?.hourly_rate ?? 0);
+  };
+
+  const getOfferEstimatedHours = (offer) => {
+    const hours = Number(offer?.estimated_hours);
+    return Number.isFinite(hours) ? hours : 0;
   };
 
   const handleViewDetails = (offerId) => {
@@ -267,7 +286,7 @@ export default function ClientOfferListPage() {
                   <p className="text-sm text-gray-500 mb-1">Total Budget</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {formatCurrency(
-                      offers.reduce((sum, offer) => sum + (offer.total_budget || 0), 0)
+                      offers.reduce((sum, offer) => sum + getOfferTotalBudget(offer), 0)
                     )}
                   </p>
                 </div>
@@ -390,7 +409,7 @@ export default function ClientOfferListPage() {
                       <div className="flex items-center gap-2">
                         <Wallet className="w-4 h-4 text-blue-600" />
                         <span className="font-bold text-lg text-gray-900">
-                          {formatCurrency(offer.total_budget)}
+                          {formatCurrency(getOfferTotalBudget(offer))}
                         </span>
                       </div>
                     </div>
@@ -399,7 +418,7 @@ export default function ClientOfferListPage() {
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-blue-600" />
                         <span className="font-semibold text-gray-900">
-                          {formatCurrency(offer.agreed_hourly_rate)}/hr
+                          {formatCurrency(getOfferHourlyRate(offer))}/hr
                         </span>
                       </div>
                     </div>
@@ -414,7 +433,7 @@ export default function ClientOfferListPage() {
                           <span className="text-sm font-medium">Estimated: {offer.estimated_hours} hours</span>
                         </div>
                         <span className="text-sm font-medium text-blue-900">
-                          {formatCurrency(offer.agreed_hourly_rate * offer.estimated_hours)}
+                          {formatCurrency(getOfferHourlyRate(offer) * getOfferEstimatedHours(offer))}
                         </span>
                       </div>
                     </div>

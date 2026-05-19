@@ -9,93 +9,64 @@ import {
   Shield, AlertCircle, Loader, RefreshCw, Info, Check, Ban, X,
   TrendingUp, Percent, ArrowLeftRight, CreditCard
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Result Modal — replaces all alert() calls
+// Result Dialog — replaces custom ResultModal
 // ─────────────────────────────────────────────────────────────────────────────
-function ResultModal({ result, onClose }) {
-  if (!result) return null;
+function ResultDialog({ result, onClose }) {
+  const isSettle = result?.type === 'settle';
+  const isRefund = result?.type === 'refund';
+  const isError  = result?.type === 'error';
 
-  const isSettle = result.type === 'settle';
-  const isRefund = result.type === 'refund';
-  const isError  = result.type === 'error';
+  const fmt = (v) => `$${Number(v || 0).toLocaleString('en-IN')}`;
 
-  const fmt = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
+  const title = !result ? '' :
+    isError  ? 'Action Failed' :
+    isSettle ? (result.data.already_settled ? 'Already Settled' : 'Settlement Complete') :
+               (result.data.already_refunded ? 'Already Refunded' : 'Refund Processed');
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-        {/* Header */}
-        <div className={`p-6 ${
-          isError  ? 'bg-red-50 border-b border-red-100' :
-          isSettle ? 'bg-blue-50 border-b border-blue-100' :
-                     'bg-green-50 border-b border-green-100'
-        }`}>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              {isError
-                ? <XCircle className="w-8 h-8 text-red-500" />
-                : <CheckCircle className={`w-8 h-8 ${isSettle ? 'text-blue-600' : 'text-green-600'}`} />}
-              <div>
-                <h2 className={`text-lg font-bold ${
-                  isError ? 'text-red-800' : isSettle ? 'text-blue-900' : 'text-green-900'
-                }`}>
-                  {isError  ? 'Action Failed'               :
-                   isSettle ? (result.data.already_settled ? 'Already Settled' : 'Settlement Complete') :
-                              (result.data.already_refunded ? 'Already Refunded' : 'Refund Processed')}
-                </h2>
-                <p className={`text-sm mt-0.5 ${
-                  isError ? 'text-red-600' : isSettle ? 'text-blue-700' : 'text-green-700'
-                }`}>
-                  {result.data.detail}
-                </p>
-              </div>
-            </div>
-            <button onClick={onClose} className="p-1 hover:bg-black/10 rounded-lg">
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-        </div>
+    <Dialog open={!!result} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent showCloseButton={false} className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            {isError
+              ? <XCircle className="w-6 h-6 text-red-500 shrink-0" />
+              : <CheckCircle className={`w-6 h-6 shrink-0 ${isSettle ? 'text-blue-600' : 'text-green-600'}`} />}
+            {title}
+          </DialogTitle>
+          {result?.data?.detail && (
+            <DialogDescription>{result.data.detail}</DialogDescription>
+          )}
+        </DialogHeader>
 
-        {/* Body */}
-        <div className="p-6 space-y-4">
+        <div className="space-y-4">
           {/* Settlement breakdown */}
           {isSettle && !isError && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Settlement Breakdown
-              </h3>
-
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Settlement Breakdown</p>
               <div className="bg-gray-50 rounded-xl divide-y divide-gray-100">
-                <Row icon={<DollarSign className="w-4 h-4 text-gray-400"/>}
-                     label="Total Escrow Budget"
-                     value={fmt(result.data.total_budget)}
-                     valueClass="text-gray-900 font-semibold" />
-                <Row icon={<TrendingUp className="w-4 h-4 text-blue-500"/>}
-                     label="Earned by Freelancer"
-                     value={fmt(result.data.earned)}
-                     valueClass="text-blue-700 font-medium" />
-                <Row icon={<Percent className="w-4 h-4 text-purple-500"/>}
-                     label="Platform Fee"
-                     value={fmt(result.data.platform_fee)}
-                     valueClass="text-purple-700 font-medium" />
-                <Row icon={<CheckCircle className="w-4 h-4 text-green-500"/>}
-                     label="Freelancer Net Payout"
-                     value={fmt(result.data.freelancer_net)}
-                     valueClass="text-green-700 font-bold" />
-                <Row icon={<ArrowLeftRight className="w-4 h-4 text-orange-500"/>}
-                     label="Refundable to Client"
-                     value={fmt(result.data.refunded_amount)}
-                     valueClass="text-orange-700 font-bold" />
+                <Row icon={<DollarSign className="w-4 h-4 text-gray-400" />}   label="Total Escrow Budget"      value={fmt(result.data.total_budget)}    valueClass="text-gray-900 font-semibold" />
+                <Row icon={<TrendingUp className="w-4 h-4 text-blue-500" />}   label="Earned by Freelancer"     value={fmt(result.data.earned)}           valueClass="text-blue-700 font-medium" />
+                <Row icon={<Percent className="w-4 h-4 text-purple-500" />}    label="Platform Fee"             value={fmt(result.data.platform_fee)}     valueClass="text-purple-700 font-medium" />
+                <Row icon={<CheckCircle className="w-4 h-4 text-green-500" />} label="Freelancer Net Payout"    value={fmt(result.data.freelancer_net)}   valueClass="text-green-700 font-bold" />
+                <Row icon={<ArrowLeftRight className="w-4 h-4 text-orange-500" />} label="Refundable to Client" value={fmt(result.data.refunded_amount)}  valueClass="text-orange-700 font-bold" />
               </div>
-
               {result.data.billing_units_paid > 0 && (
                 <p className="text-xs text-gray-500 text-center">
                   {result.data.billing_units_paid} billing unit{result.data.billing_units_paid !== 1 ? 's' : ''} marked as paid
                 </p>
               )}
-
               {result.data.refunded_amount && Number(result.data.refunded_amount) > 0 && !result.data.already_settled && (
                 <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
                   <strong>Next step:</strong> Click "Refund Escrow" to send {fmt(result.data.refunded_amount)} back to the client.
@@ -107,31 +78,17 @@ function ResultModal({ result, onClose }) {
           {/* Refund breakdown */}
           {isRefund && !isError && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Refund Details
-              </h3>
-
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Refund Details</p>
               <div className="bg-gray-50 rounded-xl divide-y divide-gray-100">
-                <Row icon={<DollarSign className="w-4 h-4 text-gray-400"/>}
-                     label="Total Escrow"
-                     value={fmt(result.data.total_budget)}
-                     valueClass="text-gray-900 font-semibold" />
-                <Row icon={<CreditCard className="w-4 h-4 text-green-500"/>}
-                     label="Amount Refunded to Client"
-                     value={fmt(result.data.refunded_amount)}
-                     valueClass="text-green-700 font-bold" />
-                <Row icon={<TrendingUp className="w-4 h-4 text-blue-500"/>}
-                     label="Released to Freelancer"
-                     value={fmt(result.data.released_amount)}
-                     valueClass="text-blue-700 font-medium" />
+                <Row icon={<DollarSign className="w-4 h-4 text-gray-400" />}  label="Total Escrow"                value={fmt(result.data.total_budget)}    valueClass="text-gray-900 font-semibold" />
+                <Row icon={<CreditCard className="w-4 h-4 text-green-500" />} label="Amount Refunded to Client"   value={fmt(result.data.refunded_amount)} valueClass="text-green-700 font-bold" />
+                <Row icon={<TrendingUp className="w-4 h-4 text-blue-500" />}  label="Released to Freelancer"      value={fmt(result.data.released_amount)} valueClass="text-blue-700 font-medium" />
               </div>
-
               {result.data.refunded_at && (
                 <p className="text-xs text-gray-500 text-center">
                   Refunded at {new Date(result.data.refunded_at).toLocaleString('en-IN')}
                 </p>
               )}
-
               <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
                 Settlement complete. Both freelancer payout and client refund have been processed.
               </div>
@@ -151,32 +108,51 @@ function ResultModal({ result, onClose }) {
           )}
         </div>
 
-        <div className="px-6 pb-6">
-          <button
+        <DialogFooter>
+          <Button
             onClick={onClose}
-            className={`w-full py-2.5 rounded-lg font-medium transition-colors ${
-              isError
-                ? 'bg-red-600 hover:bg-red-700 text-white'
-                : 'bg-gray-900 hover:bg-gray-800 text-white'
-            }`}
+            variant={isError ? 'destructive' : 'default'}
+            className="w-full"
           >
             {isError ? 'Dismiss' : 'Done'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 function Row({ icon, label, value, valueClass }) {
   return (
     <div className="flex items-center justify-between px-4 py-3">
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        {icon}
-        {label}
-      </div>
+      <div className="flex items-center gap-2 text-sm text-gray-600">{icon}{label}</div>
       <span className={`text-sm ${valueClass}`}>{value}</span>
     </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Confirm Dialog — replaces confirm()
+// ─────────────────────────────────────────────────────────────────────────────
+function ConfirmDialog({ open, title, description, confirmLabel, confirmVariant = 'default', onConfirm, onCancel }) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel(); }}>
+      <DialogContent showCloseButton={false} className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
+        </DialogHeader>
+        <DialogFooter className="flex gap-2 sm:flex-row flex-col-reverse">
+          <Button variant="outline" className="flex-1" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant={confirmVariant} className="flex-1" onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -199,7 +175,7 @@ function AdminSettleContractButton({ contractId, disabled, onSuccess, onResult }
         data: {
           detail: err.response?.data?.detail || err.response?.data?.message || 'Failed to settle contract.',
           escrow_status: err.response?.data?.escrow_status,
-        }
+        },
       });
     } finally {
       setLoading(false);
@@ -207,15 +183,15 @@ function AdminSettleContractButton({ contractId, disabled, onSuccess, onResult }
   };
 
   return (
-    <button
+    <Button
       onClick={handleSettle}
       disabled={disabled || loading}
-      className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
     >
       {loading
-        ? <><Loader className="w-5 h-5 animate-spin" /> Settling...</>
-        : <><CheckCircle className="w-5 h-5" /> Settle Contract</>}
-    </button>
+        ? <><Loader className="w-4 h-4 animate-spin mr-2" />Settling...</>
+        : <><CheckCircle className="w-4 h-4 mr-2" />Settle Contract</>}
+    </Button>
   );
 }
 
@@ -229,7 +205,7 @@ function AdminRefundEscrowButton({ contractId, disabled, onSuccess, onResult }) 
   const handleRefund = async () => {
     setLoading(true);
     try {
-      const res = await apiPrivate.post(`/admin/contracts/${contractId}/refund/`);
+      const res = await apiPrivate.post(`/admin/contracts/${contractId}/refund-escrow/`);
       onResult({ type: 'refund', data: res.data });
       onSuccess?.();
     } catch (err) {
@@ -238,7 +214,7 @@ function AdminRefundEscrowButton({ contractId, disabled, onSuccess, onResult }) 
         data: {
           detail: err.response?.data?.detail || err.response?.data?.message || 'Failed to process refund.',
           escrow_status: err.response?.data?.escrow_status,
-        }
+        },
       });
     } finally {
       setLoading(false);
@@ -246,15 +222,15 @@ function AdminRefundEscrowButton({ contractId, disabled, onSuccess, onResult }) 
   };
 
   return (
-    <button
+    <Button
       onClick={handleRefund}
       disabled={disabled || loading}
-      className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
     >
       {loading
-        ? <><Loader className="w-5 h-5 animate-spin" /> Processing...</>
-        : <><DollarSign className="w-5 h-5" /> Refund Escrow</>}
-    </button>
+        ? <><Loader className="w-4 h-4 animate-spin mr-2" />Processing...</>
+        : <><DollarSign className="w-4 h-4 mr-2" />Refund Escrow</>}
+    </Button>
   );
 }
 
@@ -266,15 +242,19 @@ export default function AdminTerminationRequestsPage() {
   const router = useRouter();
 
   const [terminationRequests, setTerminationRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortBy, setSortBy]         = useState('created_at');
+  const [sortOrder, setSortOrder]   = useState('desc');
   const [expandedRequest, setExpandedRequest] = useState(null);
-  const [actionLoading, setActionLoading] = useState(null);
-  const [currentView, setCurrentView] = useState('pending');
-  const [modalResult, setModalResult] = useState(null); // drives the ResultModal
+  const [actionLoading, setActionLoading]     = useState(null);
+  const [currentView, setCurrentView]         = useState('pending');
+  const [modalResult, setModalResult]         = useState(null);
+
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  // { requestId, action: 'approve' | 'reject' }
 
   useEffect(() => { fetchTerminationRequests(); }, []);
 
@@ -291,32 +271,25 @@ export default function AdminTerminationRequestsPage() {
     }
   };
 
-  const handleApprove = async (requestId) => {
-    if (!confirm('Approve this termination request?\n\nThis will terminate the contract.')) return;
-    setActionLoading(requestId);
-    try {
-      await apiPrivate.post(`/admin/termination-requests/${requestId}/approve/`);
-      await fetchTerminationRequests();
-    } catch (err) {
-      setModalResult({
-        type: 'error',
-        data: { detail: err.response?.data?.detail || 'Failed to approve termination request.' }
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  // Opens the confirm dialog instead of browser confirm()
+  const promptApprove = (requestId) => setConfirmDialog({ requestId, action: 'approve' });
+  const promptReject  = (requestId) => setConfirmDialog({ requestId, action: 'reject'  });
 
-  const handleReject = async (requestId) => {
-    if (!confirm('Reject this termination request?\n\nThe contract will remain active.')) return;
+  const handleConfirmed = async () => {
+    if (!confirmDialog) return;
+    const { requestId, action } = confirmDialog;
+    setConfirmDialog(null);
     setActionLoading(requestId);
     try {
-      await apiPrivate.post(`/admin/termination-requests/${requestId}/reject/`);
+      await apiPrivate.post(`/admin/termination-requests/${requestId}/${action}/`);
       await fetchTerminationRequests();
     } catch (err) {
       setModalResult({
         type: 'error',
-        data: { detail: err.response?.data?.detail || 'Failed to reject termination request.' }
+        data: {
+          detail: err.response?.data?.detail ||
+            `Failed to ${action} termination request.`,
+        },
       });
     } finally {
       setActionLoading(null);
@@ -327,11 +300,14 @@ export default function AdminTerminationRequestsPage() {
   const formatDate = (d) => {
     if (!d) return 'Not specified';
     try {
-      return new Date(d).toLocaleString('en-IN', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      return new Date(d).toLocaleString('en-IN', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
     } catch { return 'Invalid date'; }
   };
 
-  const formatMoney = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
+  const formatMoney = (v) => `$${Number(v || 0).toLocaleString('en-IN')}`;
 
   const getDaysAgo = (d) => {
     if (!d) return '';
@@ -371,8 +347,8 @@ export default function AdminTerminationRequestsPage() {
 
   const getStatusBadge = (status) => ({
     pending:  <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">Pending Review</span>,
-    approved: <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Approved</span>,
-    rejected: <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">Rejected</span>,
+    approved: <span className="px-3 py-1 bg-green-100  text-green-700  text-xs font-medium rounded-full">Approved</span>,
+    rejected: <span className="px-3 py-1 bg-red-100    text-red-700    text-xs font-medium rounded-full">Rejected</span>,
   }[status] || null);
 
   // ── Filter + sort ──────────────────────────────────────────────────────────
@@ -381,9 +357,9 @@ export default function AdminTerminationRequestsPage() {
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
     return (
-      r.contract?.client?.name?.toLowerCase().includes(s) ||
+      r.contract?.client?.name?.toLowerCase().includes(s)     ||
       r.contract?.freelancer?.name?.toLowerCase().includes(s) ||
-      r.requested_by?.name?.toLowerCase().includes(s) ||
+      r.requested_by?.name?.toLowerCase().includes(s)         ||
       r.reason?.toLowerCase().includes(s)
     );
   });
@@ -401,15 +377,16 @@ export default function AdminTerminationRequestsPage() {
   });
 
   const toggleSort = (f) => {
-    if (sortBy === f) setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
+    if (sortBy === f) setSortOrder(o => (o === 'asc' ? 'desc' : 'asc'));
     else { setSortBy(f); setSortOrder('desc'); }
   };
 
-  const SortIcon = ({ field }) => sortBy !== field
-    ? <ChevronDown className="w-4 h-4 text-gray-400" />
-    : sortOrder === 'asc'
-      ? <ChevronUp className="w-4 h-4 text-indigo-600" />
-      : <ChevronDown className="w-4 h-4 text-indigo-600" />;
+  const SortIcon = ({ field }) =>
+    sortBy !== field
+      ? <ChevronDown className="w-4 h-4 text-gray-400" />
+      : sortOrder === 'asc'
+        ? <ChevronUp   className="w-4 h-4 text-indigo-600" />
+        : <ChevronDown className="w-4 h-4 text-indigo-600" />;
 
   const counts = {
     pending:  terminationRequests.filter(r => r.status === 'pending').length,
@@ -437,12 +414,12 @@ export default function AdminTerminationRequestsPage() {
         </div>
         <p className="text-red-700 mb-4">{error}</p>
         <div className="flex gap-3">
-          <button onClick={fetchTerminationRequests} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2">
+          <Button variant="destructive" onClick={fetchTerminationRequests} className="flex items-center gap-2">
             <RefreshCw className="w-4 h-4" /> Try Again
-          </button>
-          <button onClick={() => router.push('/admin/dashboard')} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          </Button>
+          <Button variant="outline" onClick={() => router.push('/admin/dashboard')}>
             Back to Dashboard
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -451,8 +428,24 @@ export default function AdminTerminationRequestsPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Result modal */}
-      <ResultModal result={modalResult} onClose={() => setModalResult(null)} />
+
+      {/* Result Dialog */}
+      <ResultDialog result={modalResult} onClose={() => setModalResult(null)} />
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!confirmDialog}
+        title={confirmDialog?.action === 'approve' ? 'Approve Termination?' : 'Reject Termination?'}
+        description={
+          confirmDialog?.action === 'approve'
+            ? 'This will terminate the contract. This action cannot be undone.'
+            : 'The contract will remain active.'
+        }
+        confirmLabel={confirmDialog?.action === 'approve' ? 'Approve' : 'Reject'}
+        confirmVariant={confirmDialog?.action === 'approve' ? 'default' : 'destructive'}
+        onConfirm={handleConfirmed}
+        onCancel={() => setConfirmDialog(null)}
+      />
 
       {/* Header */}
       <div className="border-b bg-white">
@@ -469,25 +462,24 @@ export default function AdminTerminationRequestsPage() {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
                 {[
-                  { key:'pending',  label:'Pending',  icon:AlertTriangle, color:'text-orange-700' },
-                  { key:'approved', label:'Approved', icon:Check,         color:'text-green-700'  },
-                  { key:'rejected', label:'Rejected', icon:Ban,           color:'text-red-700'    },
-                  { key:'all',      label:'All',      icon:Filter,        color:'text-indigo-700' },
+                  { key: 'pending',  label: 'Pending',  icon: AlertTriangle, color: 'text-orange-700' },
+                  { key: 'approved', label: 'Approved', icon: Check,         color: 'text-green-700'  },
+                  { key: 'rejected', label: 'Rejected', icon: Ban,           color: 'text-red-700'    },
+                  { key: 'all',      label: 'All',      icon: Filter,        color: 'text-indigo-700' },
                 ].map(({ key, label, icon: Icon, color }) => (
                   <button key={key} onClick={() => setCurrentView(key)}
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       currentView === key ? `bg-white ${color} shadow-sm` : 'text-gray-600 hover:text-gray-900'
                     }`}>
                     <div className="flex items-center gap-1.5">
-                      <Icon className="w-4 h-4" />
-                      {label} ({counts[key]})
+                      <Icon className="w-4 h-4" />{label} ({counts[key]})
                     </div>
                   </button>
                 ))}
               </div>
-              <button onClick={fetchTerminationRequests} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Refresh">
+              <Button variant="ghost" size="icon" onClick={fetchTerminationRequests} title="Refresh">
                 <RefreshCw className="w-5 h-5 text-gray-600" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -505,16 +497,14 @@ export default function AdminTerminationRequestsPage() {
           </div>
           <div className="flex gap-2 flex-wrap">
             {[
-              { f:'created_at', label:'Date',   Icon:Calendar   },
-              { f:'budget',     label:'Budget', Icon:DollarSign },
-              { f:'status',     label:'Status', Icon:Filter     },
+              { f: 'created_at', label: 'Date',   Icon: Calendar   },
+              { f: 'budget',     label: 'Budget', Icon: DollarSign },
+              { f: 'status',     label: 'Status', Icon: Filter     },
             ].map(({ f, label, Icon }) => (
-              <button key={f} onClick={() => toggleSort(f)}
-                className={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
-                  sortBy === f ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}>
+              <Button key={f} variant={sortBy === f ? 'secondary' : 'outline'} onClick={() => toggleSort(f)}
+                className="flex items-center gap-2">
                 <Icon className="w-4 h-4" />{label}<SortIcon field={f} />
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -548,8 +538,8 @@ export default function AdminTerminationRequestsPage() {
                       {/* People + budget */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {[
-                          { label:'Client',     name:request.contract.client.name,     color:'blue'   },
-                          { label:'Freelancer', name:request.contract.freelancer.name, color:'green'  },
+                          { label: 'Client',     name: request.contract.client.name,     color: 'blue'  },
+                          { label: 'Freelancer', name: request.contract.freelancer.name, color: 'green' },
                         ].map(({ label, name, color }) => (
                           <div key={label} className="flex items-center gap-3">
                             <div className={`w-10 h-10 bg-${color}-100 rounded-full flex items-center justify-center shrink-0`}>
@@ -590,12 +580,15 @@ export default function AdminTerminationRequestsPage() {
                     </div>
 
                     {/* Expand */}
-                    <button onClick={() => setExpandedRequest(expandedRequest === request.id ? null : request.id)}
-                      className="p-2 hover:bg-gray-100 rounded-lg">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setExpandedRequest(expandedRequest === request.id ? null : request.id)}
+                    >
                       {expandedRequest === request.id
-                        ? <ChevronUp className="w-5 h-5 text-gray-600" />
+                        ? <ChevronUp   className="w-5 h-5 text-gray-600" />
                         : <ChevronDown className="w-5 h-5 text-gray-600" />}
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Reason preview */}
@@ -607,17 +600,25 @@ export default function AdminTerminationRequestsPage() {
                   {/* ── PENDING actions ──────────────────────────────────── */}
                   {request.status === 'pending' && (
                     <div className="mt-4 flex gap-3">
-                      <button onClick={() => handleApprove(request.id)} disabled={actionLoading === request.id}
-                        className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                      <Button
+                        onClick={() => promptApprove(request.id)}
+                        disabled={actionLoading === request.id}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      >
                         {actionLoading === request.id
-                          ? <><Loader className="w-5 h-5 animate-spin" /> Processing...</>
-                          : <><CheckCircle className="w-5 h-5" /> Approve Termination</>}
-                      </button>
-                      <button onClick={() => handleReject(request.id)} disabled={actionLoading === request.id}
-                        className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center gap-2">
-                        {actionLoading === request.id ? <Loader className="w-5 h-5 animate-spin" /> : <Ban className="w-5 h-5" />}
+                          ? <><Loader className="w-4 h-4 animate-spin mr-2" />Processing...</>
+                          : <><CheckCircle className="w-4 h-4 mr-2" />Approve Termination</>}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => promptReject(request.id)}
+                        disabled={actionLoading === request.id}
+                      >
+                        {actionLoading === request.id
+                          ? <Loader className="w-4 h-4 animate-spin mr-2" />
+                          : <Ban className="w-4 h-4 mr-2" />}
                         Reject
-                      </button>
+                      </Button>
                     </div>
                   )}
 
@@ -635,7 +636,7 @@ export default function AdminTerminationRequestsPage() {
                       {/* Step indicators */}
                       <div className="grid grid-cols-2 gap-2 text-xs text-center">
                         <div className={`p-2.5 rounded-lg border font-medium ${
-                          isSettled(request)  ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-gray-50 border-gray-200 text-gray-400'
+                          isSettled(request) ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-gray-50 border-gray-200 text-gray-400'
                         }`}>
                           <div>Step 1 · Settle Contract</div>
                           {isSettled(request) && <div className="mt-0.5 text-green-600">✓ Complete</div>}
@@ -648,9 +649,7 @@ export default function AdminTerminationRequestsPage() {
                           <div>Step 2 · Refund Escrow</div>
                           {isRefunded(request)
                             ? <div className="mt-0.5 text-green-600">✓ Complete</div>
-                            : isSettled(request)
-                              ? <div className="mt-0.5">Ready</div>
-                              : null}
+                            : isSettled(request) ? <div className="mt-0.5">Ready</div> : null}
                         </div>
                       </div>
 
@@ -696,18 +695,17 @@ export default function AdminTerminationRequestsPage() {
                           <p className="text-gray-700 whitespace-pre-line">{request.reason || 'No reason provided'}</p>
                         </div>
                       </div>
-
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                           <Shield className="w-5 h-5 text-gray-600" /> Contract Info
                         </h4>
                         <div className="bg-white p-4 rounded-lg border space-y-3 text-sm">
                           {[
-                            ['Status', request.contract.status],
-                            ['End Reason', request.contract.end_reason],
-                            ['Notice Period', `${request.contract.termination_notice_days || 7} days`],
-                            ['Started', formatDate(request.contract.started_at)],
-                            ['Reviewed', request.reviewed_at ? formatDate(request.reviewed_at) : null],
+                            ['Status',         request.contract.status],
+                            ['End Reason',     request.contract.end_reason],
+                            ['Notice Period',  `${request.contract.termination_notice_days || 7} days`],
+                            ['Started',        formatDate(request.contract.started_at)],
+                            ['Reviewed',       request.reviewed_at ? formatDate(request.reviewed_at) : null],
                           ].filter(([, v]) => v).map(([label, value]) => (
                             <div key={label}>
                               <p className="text-gray-500">{label}</p>
@@ -732,9 +730,9 @@ export default function AdminTerminationRequestsPage() {
         {terminationRequests.length > 0 && (
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label:'Pending',     value:counts.pending,  color:'orange', Icon:AlertTriangle },
-              { label:'Approved',    value:counts.approved, color:'green',  Icon:Check        },
-              { label:'Rejected',    value:counts.rejected, color:'red',    Icon:Ban          },
+              { label: 'Pending',  value: counts.pending,  color: 'orange', Icon: AlertTriangle },
+              { label: 'Approved', value: counts.approved, color: 'green',  Icon: Check        },
+              { label: 'Rejected', value: counts.rejected, color: 'red',    Icon: Ban          },
               {
                 label: 'Total Value',
                 value: formatMoney(terminationRequests.reduce((s, r) => s + parseFloat(r.contract?.offer?.total_budget || 0), 0)),

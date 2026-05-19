@@ -62,7 +62,9 @@ import {
   Image as ImageIcon,
   File,
   FileSpreadsheet,
-  FileCode
+  FileCode,
+  Monitor,
+  Smartphone
 } from 'lucide-react';
 import ContractMessages from '@/lib/hooks/contractMessage';
 import FolderManager from '@/lib/hooks/FolderManager';
@@ -110,6 +112,9 @@ const formatCurrency = (amount, options = {}) => {
   }).format(value);
 };
 
+const TRACKER_DOWNLOAD_URL =
+  'https://github.com/bisher-muhammed/freelancerhub-tracker/releases/download/v1.0.0/FreelancerHubTracker.exe';
+
 export default function FreelancerContractDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -130,6 +135,7 @@ export default function FreelancerContractDetailPage() {
 
   // Tracking Policy states
   const [showTrackingPolicy, setShowTrackingPolicy] = useState(false);
+  const [showTrackerAppModal, setShowTrackerAppModal] = useState(false);
 
   const [dialogState, setDialogState] = useState({
     open: false,
@@ -260,10 +266,6 @@ export default function FreelancerContractDetailPage() {
       const contractData = res.data;
       setContract(contractData);
 
-      // Show modal when contract is active and freelancer has NOT yet accepted policy.
-      // Logic: tracking_required=false means not yet accepted, tracking_policy!=null means
-      // admin has created a policy that needs acceptance.
-      // After acceptance → backend sets tracking_required=true.
       if (
         contractData?.status === 'active' &&
         contractData?.tracking_required === false &&
@@ -420,7 +422,6 @@ export default function FreelancerContractDetailPage() {
   );
 
   const submitDeliverable = async () => {
-    // Check if tracking policy is required and accepted
     if (!contract?.tracking_required && contract?.tracking_policy !== null) {
       if (!(await showConfirm(
         'You need to accept the work tracking policy before submitting deliverables. Would you like to review the policy now?',
@@ -474,23 +475,26 @@ export default function FreelancerContractDetailPage() {
     fileInput.click();
   };
 
-  // ✅ FIX: Update local contract state so UI reacts immediately without full refetch
   const handleTrackingPolicyAccepted = async () => {
     try {
-      setContract(prev => ({ ...prev, tracking_required: true })); // backend sets this on accept
+      setContract(prev => ({ ...prev, tracking_required: true }));
       await showAlert('Tracking policy accepted successfully! You can now use work tracking features.', 'Policy Accepted');
+      setShowTrackerAppModal(true);
     } catch (err) {
       console.error('Error updating tracking policy state:', err);
     }
   };
 
-  // ✅ FIX: The modal itself already calls the API; this just handles local state after rejection
   const handleTrackingPolicyRejected = async () => {
     await showAlert('Tracking policy rejected. Some features like time tracking and deliverable submission may be limited.', 'Policy Rejected');
   };
 
   const downloadContract = async () => {
     await showAlert('Contract download feature would be implemented here.', 'Download Contract');
+  };
+
+  const handleDownloadTrackerApp = () => {
+    window.open(TRACKER_DOWNLOAD_URL, '_blank');
   };
 
   const getStatusConfig = (status) => {
@@ -716,7 +720,6 @@ export default function FreelancerContractDetailPage() {
 
     switch (contract.status) {
       case 'active':
-        // Add tracking policy button if not accepted
         if (!contract?.tracking_required && contract?.tracking_policy !== null) {
           actions.push({
             label: 'Review Tracking Policy',
@@ -942,16 +945,25 @@ export default function FreelancerContractDetailPage() {
             </div>
           )}
 
-        {/* Tracking policy accepted — success banner */}
+        {/* Tracking policy accepted — success banner with Download App button */}
         {contract.status === 'active' &&
           contract.tracking_required === true && (
-            <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-800 border border-green-200">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-medium">
-                  ✓ Work Tracking Policy Accepted
-                  {contract.tracking_policy?.version && ` (Version ${contract.tracking_policy.version})`}
-                </span>
+            <div className="mb-4 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-medium">
+                    ✓ Work Tracking Policy Accepted
+                    {contract.tracking_policy?.version && ` (Version ${contract.tracking_policy.version})`}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowTrackerAppModal(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Tracker App
+                </button>
               </div>
             </div>
           )}
@@ -1404,7 +1416,7 @@ export default function FreelancerContractDetailPage() {
         />
       )}
 
-      {/* ✅ Tracking Policy Modal */}
+      {/* Tracking Policy Modal */}
       {showTrackingPolicy && (
         <TrackingPolicyModal
           contractId={id}
@@ -1421,6 +1433,50 @@ export default function FreelancerContractDetailPage() {
         />
       )}
 
+      {/* Tracker App Download Modal — single download */}
+      <Dialog open={showTrackerAppModal} onOpenChange={setShowTrackerAppModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Monitor className="w-5 h-5 text-indigo-600" />
+              Download Tracker App
+            </DialogTitle>
+            <DialogDescription>
+              Download the FreelancerHub Tracker App to track your work hours and activities for this contract.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <button
+              onClick={handleDownloadTrackerApp}
+              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-semibold text-base"
+            >
+              <Download className="w-5 h-5" />
+              Download Tracker App
+            </button>
+
+            <div className="bg-blue-50 rounded-lg p-4 mt-4">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-blue-700">
+                  After downloading, install the app and log in with your FreelancerHub account to start tracking your work hours.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <button
+              onClick={() => setShowTrackerAppModal(false)}
+              className="w-full px-4 py-2 text-gray-700 border border-gray-200 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generic Dialog */}
       <Dialog open={dialogState.open} onOpenChange={(open) => {
         if (!open && dialogState.open && !dialogResolvedRef.current) {
           handleDialogCancel();
