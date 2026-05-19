@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiPublic } from "@/lib/apiPublic";
+import { apiPrivate } from "@/lib/apiPrivate";
 
 export const sendOtp = createAsyncThunk(
   "user/sendOtp",
@@ -8,7 +9,9 @@ export const sendOtp = createAsyncThunk(
       const res = await apiPublic.post("send-otp/", formData);
       return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || { message: "Failed to send OTP" });
+      return rejectWithValue(
+        err.response?.data || { message: "Failed to send OTP" }
+      );
     }
   }
 );
@@ -20,7 +23,9 @@ export const submitRegisterForm = createAsyncThunk(
       const res = await apiPublic.post("register/", formData);
       return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || { message: "Form submission failed" });
+      return rejectWithValue(
+        err.response?.data || { message: "Form submission failed" }
+      );
     }
   }
 );
@@ -32,7 +37,9 @@ export const verifyOtpAndRegister = createAsyncThunk(
       const res = await apiPublic.post("verify-otp/", formData);
       return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || { message: "OTP verification failed" });
+      return rejectWithValue(
+        err.response?.data || { message: "OTP verification failed" }
+      );
     }
   }
 );
@@ -41,46 +48,98 @@ export const loginUser = createAsyncThunk(
   "user/loginUser",
   async (credentials, { rejectWithValue }) => {
     try {
+
       const timezone =
         Intl.DateTimeFormat().resolvedOptions().timeZone;
-        console.log("🌍 Detected browser timezone:", timezone);
 
-      const res = await apiPublic.post("login/", {
-        ...credentials,
-        timezone,
-      });
+      const res = await apiPublic.post(
+        "login/",
+        {
+          ...credentials,
+          timezone,
+        },
+        {
+          withCredentials: true,
+        }
+      );
 
-      const { success, message, data } = res.data;
+      const { success, message, user } = res.data;
 
       if (!success) {
-        return rejectWithValue({ message: message || "Login failed" });
+        return rejectWithValue({
+          message: message || "Login failed",
+        });
       }
 
-      const { user, access, refresh } = data;
+      return {
+        user,
+        message,
+      };
 
-      return { user, access, refresh, message };
     } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        "Login failed.";
-      return rejectWithValue({ message: msg });
+
+      return rejectWithValue({
+        message:
+          err.response?.data?.message ||
+          err.response?.data?.detail ||
+          "Login failed.",
+      });
     }
   }
 );
 
+export const logoutUser = createAsyncThunk(
+  "user/logoutUser",
+  async (_, { rejectWithValue }) => {
+    try {
+
+      await apiPrivate.post(
+        "logout/",
+        {},
+        {
+          withCredentials: true,
+        }
+      );
+
+      return true;
+
+    } catch (err) {
+
+      return rejectWithValue({
+        message: "Logout failed",
+      });
+    }
+  }
+);
 
 export const googleLogin = createAsyncThunk(
   "user/googleLogin",
   async (token, { rejectWithValue }) => {
     try {
-      const res = await apiPublic.post("google-login/", { id_token: token });
-      const { success, message, data } = res.data;
 
-      if (!success) return rejectWithValue({ message });
+      const res = await apiPublic.post(
+        "google-login/",
+        { id_token: token },
+        {
+          withCredentials: true,
+        }
+      );
 
-      return { user: data.user, access: data.access, refresh: data.refresh, message };
+      const { success, message, user } = res.data;
+
+      if (!success) {
+        return rejectWithValue({
+          message,
+        });
+      }
+
+      return {
+        user,
+        message,
+      };
+
     } catch (err) {
+
       return rejectWithValue({
         message:
           err.response?.data?.message ||
@@ -91,12 +150,8 @@ export const googleLogin = createAsyncThunk(
   }
 );
 
-
-
 const initialState = {
   user: null,
-  accessToken: null,
-  refreshToken: null,
   loading: false,
   error: null,
   successMessage: null,
@@ -106,105 +161,175 @@ const initialState = {
 
 const userSlice = createSlice({
   name: "user",
+
   initialState,
+
   reducers: {
+
     resetStatus(state) {
       state.error = null;
       state.successMessage = null;
     },
-    logout(state) {
-      state.user = null;
-      state.accessToken = null;
-      state.refreshToken = null;
-      state.error = null;
-      state.successMessage = null;
-      state.otpSent = false;
-      state.formSubmitted = false;
 
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("access");
-        localStorage.removeItem("refresh");
-      }
-    },
-    updateAccessToken(state, action) {
-      state.accessToken = action.payload;
-      if (typeof window !== "undefined") {
-        localStorage.setItem("access", action.payload);
-      }
+    clearUser(state) {
+      state.user = null;
     },
   },
+
   extraReducers: (builder) => {
-  builder
-    .addCase(sendOtp.pending, (s) => { s.loading = true; s.error = null; })
-    .addCase(sendOtp.fulfilled, (s, a) => {
-      s.loading = false; s.otpSent = true;
-      s.successMessage = a.payload.message || "OTP sent successfully!";
-    })
-    .addCase(sendOtp.rejected, (s, a) => {
-      s.loading = false; s.error = a.payload?.message || "Failed to send OTP.";
-    })
 
-    .addCase(submitRegisterForm.pending, (s) => { s.loading = true; s.error = null; })
-    .addCase(submitRegisterForm.fulfilled, (s, a) => {
-      s.loading = false; s.formSubmitted = true;
-      s.successMessage = a.payload.message || "Form submitted successfully.";
-    })
-    .addCase(submitRegisterForm.rejected, (s, a) => {
-      s.loading = false; s.error = a.payload?.message || "Form submission failed.";
-    })
+    builder
 
-    .addCase(verifyOtpAndRegister.pending, (s) => { s.loading = true; s.error = null; })
-    .addCase(verifyOtpAndRegister.fulfilled, (s, a) => {
-      s.loading = false;
-      s.successMessage = a.payload.message || "Registration successful!";
-      s.otpSent = false; s.formSubmitted = false;
-    })
-    .addCase(verifyOtpAndRegister.rejected, (s, a) => {
-      s.loading = false; s.error = a.payload?.message || "OTP verification failed.";
-    })
+      // SEND OTP
+      .addCase(sendOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
 
-    .addCase(loginUser.pending, (s) => { s.loading = true; s.error = null; })
-    .addCase(loginUser.fulfilled, (s, a) => {
-      s.loading = false;
-      s.user = a.payload.user;
-      s.accessToken = a.payload.access;
-      s.refreshToken = a.payload.refresh;
-      s.successMessage = a.payload.message || "Login successful.";
+      .addCase(sendOtp.fulfilled, (state, action) => {
+        state.loading = false;
+        state.otpSent = true;
 
-      if (typeof window !== "undefined") {
-        localStorage.setItem("access", a.payload.access);
-        localStorage.setItem("refresh", a.payload.refresh);
-      }
-    })
-    .addCase(loginUser.rejected, (s, a) => {
-      s.loading = false;
-      s.error = a.payload?.message || "Login failed.";
-    })
+        state.successMessage =
+          action.payload.message ||
+          "OTP sent successfully!";
+      })
 
-    // GOOGLE LOGIN — FIXED
-    .addCase(googleLogin.pending, (s) => { s.loading = true; s.error = null; })
-    .addCase(googleLogin.fulfilled, (s, a) => {
-      s.loading = false;
-      s.user = a.payload.user;
-      s.accessToken = a.payload.access;
-      s.refreshToken = a.payload.refresh;
-      s.successMessage = a.payload.message || "Google login successful.";
+      .addCase(sendOtp.rejected, (state, action) => {
+        state.loading = false;
 
-      if (typeof window !== "undefined") {
-        localStorage.setItem("access", a.payload.access);
-        localStorage.setItem("refresh", a.payload.refresh);
-      }
-    })
-    .addCase(googleLogin.rejected, (s, a) => {
-      s.loading = false;
-      s.error = a.payload?.message || "Google login failed.";
-    });
-}
-})
+        state.error =
+          action.payload?.message ||
+          "Failed to send OTP.";
+      })
 
+      // REGISTER
+      .addCase(submitRegisterForm.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
 
-export const { logout, resetStatus, updateAccessToken } = userSlice.actions;
+      .addCase(submitRegisterForm.fulfilled, (state, action) => {
+        state.loading = false;
+        state.formSubmitted = true;
+
+        state.successMessage =
+          action.payload.message ||
+          "Form submitted successfully.";
+      })
+
+      .addCase(submitRegisterForm.rejected, (state, action) => {
+        state.loading = false;
+
+        state.error =
+          action.payload?.message ||
+          "Form submission failed.";
+      })
+
+      // VERIFY OTP
+      .addCase(verifyOtpAndRegister.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+
+      .addCase(verifyOtpAndRegister.fulfilled, (state, action) => {
+        state.loading = false;
+
+        state.successMessage =
+          action.payload.message ||
+          "Registration successful!";
+
+        state.otpSent = false;
+        state.formSubmitted = false;
+      })
+
+      .addCase(verifyOtpAndRegister.rejected, (state, action) => {
+        state.loading = false;
+
+        state.error =
+          action.payload?.message ||
+          "OTP verification failed.";
+      })
+
+      // LOGIN
+      .addCase(loginUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.loading = false;
+
+        state.user = action.payload.user;
+
+        state.successMessage =
+          action.payload.message ||
+          "Login successful.";
+      })
+
+      .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+
+        state.error =
+          action.payload?.message ||
+          "Login failed.";
+      })
+
+      // GOOGLE LOGIN
+      .addCase(googleLogin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+
+      .addCase(googleLogin.fulfilled, (state, action) => {
+        state.loading = false;
+
+        state.user = action.payload.user;
+
+        state.successMessage =
+          action.payload.message ||
+          "Google login successful.";
+      })
+
+      .addCase(googleLogin.rejected, (state, action) => {
+        state.loading = false;
+
+        state.error =
+          action.payload?.message ||
+          "Google login failed.";
+      })
+
+      // LOGOUT
+      .addCase(logoutUser.pending, (state) => {
+        state.loading = true;
+      })
+
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.loading = false;
+
+        state.user = null;
+        state.error = null;
+        state.successMessage = null;
+        state.otpSent = false;
+        state.formSubmitted = false;
+      })
+
+      .addCase(logoutUser.rejected, (state, action) => {
+        state.loading = false;
+
+        // still clear user locally
+        state.user = null;
+
+        state.error =
+          action.payload?.message ||
+          "Logout failed.";
+      });
+  },
+});
+
+export const {
+  resetStatus,
+  clearUser,
+} = userSlice.actions;
+
 export default userSlice.reducer;
-
-
-// why50@comfythings.com

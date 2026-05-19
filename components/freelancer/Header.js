@@ -12,7 +12,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
-import { logout } from "../../app/store/slices/userSlice";
+import { logoutUser } from "../../app/store/slices/userSlice";
 import { persistor } from "@/app/store/store";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -37,18 +37,25 @@ export default function FreelancerHeader({ onMenuClick }) {
   }, []);
 
   const handleLogout = async () => {
-    try {
-      dispatch(logout());
-      await persistor.purge();
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("access");
-        localStorage.removeItem("refresh");
+  
+      try {
+  
+        await dispatch(
+          logoutUser()
+        ).unwrap();
+  
+        await persistor.purge();
+  
+        router.replace("/login");
+  
+      } catch (err) {
+  
+        console.error(
+          "Logout failed:",
+          err
+        );
       }
-      router.push("/login");
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
-  };
+    };
 
   // Get first letter for avatar
   const avatarLetter = username.charAt(0).toUpperCase();

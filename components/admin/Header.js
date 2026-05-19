@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Shield, Menu, LogOut } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
-import { logout } from "../../app/store/slices/userSlice";
+import { logoutUser } from "../../app/store/slices/userSlice";
 import { persistor } from "@/app/store/store";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -28,18 +28,26 @@ export default function AdminHeader({ onMenuClick }) {
 
   // Logout
   const handleLogout = async () => {
-    try {
-      dispatch(logout());
-      await persistor.purge();
-
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
-
-      router.push("/login");
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
-  };
+  
+      try {
+  
+        await dispatch(
+          logoutUser()
+        ).unwrap();
+  
+        await persistor.purge();
+  
+        router.replace("/login");
+  
+      } catch (err) {
+  
+        console.error(
+          "Logout failed:",
+          err
+        );
+      }
+    };
+  
 
   return (
     <header
