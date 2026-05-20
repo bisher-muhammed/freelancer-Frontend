@@ -115,7 +115,16 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
-} 
+}
+
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20%       { transform: rotate(-14deg); }
+  40%       { transform: rotate(14deg); }
+  60%       { transform: rotate(-8deg); }
+  80%       { transform: rotate(8deg); }
+}
 
 @layer base {
   * {
