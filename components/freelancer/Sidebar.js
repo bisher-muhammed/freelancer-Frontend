@@ -184,27 +184,6 @@ export default function FreelancerSidebar({ onClose }) {
     },
   ];
 
-  const accountItems = [
-    {
-      icon: UserCircle,
-      label: "Profile",
-      href: "/freelancer/profile",
-      description: "Edit your profile",
-    },
-    {
-      icon: Settings,
-      label: "Settings",
-      href: "/freelancer/settings",
-      description: "Account preferences",
-    },
-    {
-      icon: Bell,
-      label: "Notifications",
-      href: "/freelancer/notifications",
-      description: "Alerts & updates",
-    },
-  ];
-
   const handleLinkClick = () => {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       onClose?.();
@@ -341,21 +320,6 @@ export default function FreelancerSidebar({ onClose }) {
               ))}
             </ul>
           </div>
-
-          {/* Account section */}
-          <div>
-            <p
-              className="sb-mono text-[10px] font-semibold uppercase tracking-[0.14em] mb-2 px-3"
-              style={{ color: "#9ca3af" }}
-            >
-              Account
-            </p>
-            <ul className="space-y-0.5">
-              {accountItems.map((item, i) => (
-                <NavItem key={i} item={item} index={i} />
-              ))}
-            </ul>
-          </div>
         </nav>
 
         {/* ── Footer ───────────────────────────────────────────────────── */}
@@ -367,20 +331,6 @@ export default function FreelancerSidebar({ onClose }) {
             className="rounded-xl px-3 py-3 flex items-center gap-3"
             style={{ background: `${PRIMARY}0d` }}
           >
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: `${PRIMARY}20` }}
-            >
-              <Award className="w-4 h-4" style={{ color: PRIMARY }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-gray-800 leading-tight truncate">
-                Top Rated Freelancer
-              </p>
-              <p className="sb-mono text-[10px] mt-0.5" style={{ color: PRIMARY }}>
-                95% Job Success
-              </p>
-            </div>
           </div>
         </div>
       </aside>

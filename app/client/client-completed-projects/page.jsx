@@ -8,7 +8,6 @@ import {
   Calendar,
   Search,
   FolderOpen,
-  ChevronRight,
   Award,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -24,7 +23,6 @@ export default function ClientCompletedProjectsPage() {
       try {
         setLoading(true);
         const res = await apiPrivate.get('client/completed-projects/');
-        // Handle both paginated {results:[...]} and plain array responses
         const data = Array.isArray(res.data) ? res.data : (res.data?.results ?? []);
         setProjects(data);
       } catch (err) {
@@ -52,7 +50,6 @@ export default function ClientCompletedProjectsPage() {
     });
   };
 
-  // ── Skeleton ────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="lg:ml-0 pt-16 lg:mr-4 w-full min-h-screen bg-gray-50">
@@ -77,7 +74,6 @@ export default function ClientCompletedProjectsPage() {
     );
   }
 
-  // ── Error ───────────────────────────────────────────────────────────────
   if (error) {
     return (
       <div className="lg:ml-0 pt-16 w-full min-h-screen bg-gray-50 flex items-center justify-center">
@@ -102,7 +98,7 @@ export default function ClientCompletedProjectsPage() {
     <div className="lg:ml-0 pt-16 lg:mr-4 w-full min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* ── Header ──────────────────────────────────────────────────── */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -127,7 +123,7 @@ export default function ClientCompletedProjectsPage() {
           </div>
         </div>
 
-        {/* ── Empty state ─────────────────────────────────────────────── */}
+        {/* Empty state */}
         {filtered.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 py-16 flex flex-col items-center gap-3 text-center">
             <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center">
@@ -152,85 +148,70 @@ export default function ClientCompletedProjectsPage() {
           </div>
         )}
 
-        {/* ── Project list ────────────────────────────────────────────── */}
+        {/* Project list */}
         <div className="space-y-4">
-          {filtered.map((project, index) => (
+          {filtered.map((project) => (
             <div
               key={project.id}
               className="group bg-white rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden"
             >
               <div className="p-5 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <h2 className="text-base font-semibold text-gray-900 leading-snug">
+                      {project.title}
+                    </h2>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full border border-emerald-100 flex-shrink-0">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Completed
+                    </span>
+                  </div>
 
-                  {/* Left — title + description + meta */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <h2 className="text-base font-semibold text-gray-900 leading-snug">
-                        {project.title}
-                      </h2>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full border border-emerald-100 flex-shrink-0">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Completed
-                      </span>
-                    </div>
+                  {project.description && (
+                    <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed mb-4">
+                      {project.description}
+                    </p>
+                  )}
 
-                    {project.description && (
-                      <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed mb-4">
-                        {project.description}
-                      </p>
-                    )}
+                  {/* Meta row */}
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-500">
 
-                    {/* Meta row */}
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-500">
-
-                      {/* Freelancer */}
-                      {project.freelancer ? (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <User className="w-3 h-3 text-gray-500" />
-                          </div>
-                          <span>
-                            <span className="text-gray-400">Freelancer: </span>
-                            <span className="font-medium text-gray-700">
-                              {project.freelancer.full_name || project.freelancer.username}
-                            </span>
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-gray-400">
-                          <User className="w-3.5 h-3.5" />
-                          <span>No freelancer info</span>
-                        </div>
-                      )}
-
-                      {/* Completed date */}
+                    {/* Freelancer */}
+                    {project.freelancer ? (
                       <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        <div className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <User className="w-3 h-3 text-gray-500" />
+                        </div>
                         <span>
-                          <span className="text-gray-400">Completed: </span>
+                          <span className="text-gray-400">Freelancer: </span>
                           <span className="font-medium text-gray-700">
-                            {fmt(project.completed_at)}
+                            {project.freelancer.full_name || project.freelancer.username}
                           </span>
                         </span>
                       </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-gray-400">
+                        <User className="w-3.5 h-3.5" />
+                        <span>No freelancer info</span>
+                      </div>
+                    )}
 
+                    {/* Completed date */}
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      <span>
+                        <span className="text-gray-400">Completed: </span>
+                        <span className="font-medium text-gray-700">
+                          {fmt(project.completed_at)}
+                        </span>
+                      </span>
                     </div>
-                  </div>
 
-                  {/* Right — view link */}
-                  <div className="flex-shrink-0 self-center">
-                    <Link
-                      href={`/client/projects/${project.id}`}
-                      className="flex items-center gap-1 text-xs text-gray-400 group-hover:text-gray-700 transition-colors font-medium whitespace-nowrap"
-                    >
-                      View
-                      <ChevronRight className="w-4 h-4" />
-                    </Link>
                   </div>
                 </div>
               </div>
 
-              {/* Emerald accent bar slides in on hover */}
+              {/* Emerald accent bar */}
               <div className="h-0.5 bg-emerald-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
             </div>
           ))}
