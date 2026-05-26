@@ -151,12 +151,10 @@ export default function PostProjectPage() {
       const all = data?.results ?? (Array.isArray(data) ? data : []);
 
       /*
-       * ✅ FIX: The API returns is_active: false / is_queued: true for ALL subs.
-       * The backend activates them lazily when a project is posted.
-       * We treat a sub as "usable" when:
-       *   - it is NOT expired (is_expired: false)
+       * A sub is "usable" when:
+       *   - it is NOT expired (is_expired: false)  ← authoritative flag from API
        *   - it has remaining_projects > 0
-       *   - status is "active" OR "queued"  (never "expired" / "cancelled")
+       *   - status is "active" OR "queued"
        */
       const usable = all.filter(
         (s) =>
@@ -204,7 +202,11 @@ export default function PostProjectPage() {
     if (!currentSubscription) {
       return { ok: false, message: 'You need an active subscription to post projects.' };
     }
-    if (new Date(currentSubscription.end_date) < new Date()) {
+    // ✅ FIX: Rely on the API's is_expired flag instead of a manual date comparison.
+    // Manual date checks can misfire for queued subs whose end_date isn't yet
+    // finalised (they get set on activation), causing false "expired" errors
+    // even when remaining_projects > 0 and is_expired === false.
+    if (currentSubscription.is_expired) {
       return { ok: false, message: 'Your subscription has expired. Please buy a new one.' };
     }
     return { ok: true };
@@ -342,7 +344,6 @@ export default function PostProjectPage() {
     }
 
     if (!validateForm()) {
-      // Scroll to first error
       document.querySelector('[data-error]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
