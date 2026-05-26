@@ -40,14 +40,13 @@ const NAV_GROUPS = [
     items: [
       { icon: AlertTriangle, label: "Disputes", href: "/admin/termination-requests" },
       { icon: CalendarClock, label: "Meetings", href: "/admin/meetings"             },
-      { icon: MessageSquare, label: "Messages", href: "/admin/messages"             },
+    
     ],
   },
   {
     label: "Configuration",
     items: [
       { icon: SlidersHorizontal, label: "Score Settings", href: "/admin/proposal-score" },
-      { icon: Settings,          label: "Settings",        href: "/admin/settings"       },
       { icon: Shield,            label: "Tracking Privacy",     href: "/admin/tracking-privacy"          },
     ],
   },
