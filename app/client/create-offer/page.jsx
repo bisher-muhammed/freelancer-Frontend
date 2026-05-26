@@ -95,7 +95,7 @@ export default function CreateOfferPage() {
       
       // Redirect to proposals page after 2 seconds
       setTimeout(() => {
-        router.push("http://localhost:3000/client/proposals");
+        router.replace("/client/proposals");
       }, 2000);
       
     } catch (err) {
@@ -489,7 +489,7 @@ export default function CreateOfferPage() {
                       <div className="flex flex-col sm:flex-row gap-4">
                         <button
                           type="button"
-                          onClick={() => router.push("http://localhost:3000/client/proposals")}
+                          onClick={() => router.replace("/client/proposals")}
                           className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium hover:shadow-sm flex-1"
                         >
                           Cancel
