@@ -241,7 +241,7 @@ export default function FreelancerMeetingsPage() {
                   )}
 
                   <button
-                    onClick={() => router.push(`/meetings/${meeting.id}`)}
+                    onClick={() => router.push(`/freelancer/meetings/${meeting.id}/room`)}
                     className="w-full text-gray-700 hover:text-gray-900 font-medium py-2.5 px-4 rounded-lg border border-gray-300 hover:border-gray-400 transition-colors text-sm"
                   >
                     View Meeting Details
