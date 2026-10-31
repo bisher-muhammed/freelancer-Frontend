@@ -50,8 +50,8 @@ function formatDate(d) {
 
 function formatBudget(project) {
   if (project.budget_type === 'fixed')
-    return `$${Number(project.fixed_budget).toLocaleString()}`;
-  return `$${Number(project.hourly_min_rate).toLocaleString()}–$${Number(project.hourly_max_rate).toLocaleString()}/hr`;
+    return `₹${Number(project.fixed_budget).toLocaleString()}`;
+  return `₹${Number(project.hourly_min_rate).toLocaleString()}–₹${Number(project.hourly_max_rate).toLocaleString()}/hr`;
 }
 
 /**

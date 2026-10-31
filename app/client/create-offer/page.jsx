@@ -71,7 +71,7 @@ export default function CreateOfferPage() {
     if (estimatedHours && estimatedHours > 0) {
       const expectedCost = hourlyRate * estimatedHours;
       if (expectedCost > totalBudget) {
-        setError(`Estimated cost ($${expectedCost.toFixed(2)}) exceeds total budget ($${totalBudget.toFixed(2)})`);
+        setError(`Estimated cost (₹${expectedCost.toFixed(2)}) exceeds total budget (₹${totalBudget.toFixed(2)})`);
         return;
       }
     }
@@ -333,7 +333,7 @@ export default function CreateOfferPage() {
                             placeholder="Enter total budget amount"
                           />
                           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <span className="text-gray-600">USD</span>
+                            <span className="text-gray-600">INR</span>
                           </div>
                         </div>
                         <p className="text-sm text-gray-600">
@@ -363,7 +363,7 @@ export default function CreateOfferPage() {
                             placeholder="Hourly rate"
                           />
                           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <span className="text-gray-600">USD/hour</span>
+                            <span className="text-gray-600">INR/hour</span>
                           </div>
                         </div>
                         <p className="text-sm text-gray-600">
@@ -404,11 +404,11 @@ export default function CreateOfferPage() {
                           <div className="space-y-3">
                             <div className="flex justify-between items-center">
                               <span className="text-gray-700">Estimated Cost:</span>
-                              <span className="font-semibold text-gray-900">${budgetUsage.cost.toFixed(2)}</span>
+                              <span className="font-semibold text-gray-900">₹{budgetUsage.cost.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-gray-700">Total Budget:</span>
-                              <span className="font-semibold text-gray-900">${parseFloat(offer.total_budget).toFixed(2)}</span>
+                              <span className="font-semibold text-gray-900">₹{parseFloat(offer.total_budget).toFixed(2)}</span>
                             </div>
                             <div className="pt-3 border-t border-gray-300">
                               <div className="flex justify-between items-center mb-2">
@@ -427,7 +427,7 @@ export default function CreateOfferPage() {
                             {budgetUsage.remaining >= 0 ? (
                               <div className="flex justify-between items-center text-sm">
                                 <span className="text-gray-600">Remaining Buffer:</span>
-                                <span className="font-medium text-green-600">${budgetUsage.remaining.toFixed(2)}</span>
+                                <span className="font-medium text-green-600">₹{budgetUsage.remaining.toFixed(2)}</span>
                               </div>
                             ) : (
                               <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">

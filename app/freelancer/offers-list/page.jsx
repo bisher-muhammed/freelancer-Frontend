@@ -25,6 +25,8 @@ import {
   Wallet
 } from "lucide-react";
 
+const OFFERS_PAGE_SIZE = 10;
+
 export default function FreelancerOffersListPage() {
   const router = useRouter();
 
@@ -48,10 +50,15 @@ export default function FreelancerOffersListPage() {
     filterOffers();
   }, [offers, searchTerm, statusFilter]);
 
-  const fetchOffers = async (url = "/offers/freelancer/") => {
+  const fetchOffers = async (page = 1) => {
     try {
       setLoading(true);
-      const res = await apiPrivate.get(url);
+      // Request the page size explicitly so the page math below matches the
+      // server (it previously assumed 10 while the API returned 20), and
+      // pass the page as a param instead of following absolute `next` URLs.
+      const res = await apiPrivate.get("/offers/freelancer/", {
+        params: { page, page_size: OFFERS_PAGE_SIZE },
+      });
 
       const data = res.data;
       setOffers(data.results || []);
@@ -59,10 +66,9 @@ export default function FreelancerOffersListPage() {
       setCount(data.count || 0);
       setNext(data.next);
       setPrevious(data.previous);
-      
+
       // Calculate pagination
-      const pageSize = 10; // Assuming default page size
-      const pages = Math.ceil((data.count || 1) / pageSize);
+      const pages = Math.ceil((data.count || 1) / OFFERS_PAGE_SIZE);
       setTotalPages(pages || 1);
       
     } catch (err) {
@@ -128,7 +134,7 @@ export default function FreelancerOffersListPage() {
     const value = Number(amount);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(Number.isFinite(value) ? value : 0);
@@ -175,14 +181,12 @@ export default function FreelancerOffersListPage() {
   };
 
   const handlePageChange = (pageUrl) => {
-    if (pageUrl) {
-      fetchOffers(pageUrl);
-      // Extract page number from URL
-      const pageMatch = pageUrl.match(/page=(\d+)/);
-      if (pageMatch) {
-        setCurrentPage(parseInt(pageMatch[1]));
-      }
-    }
+    if (!pageUrl) return;
+    // DRF omits ?page=1 from the "previous" link of page 2
+    const pageMatch = pageUrl.match(/[?&]page=(\d+)/);
+    const page = pageMatch ? parseInt(pageMatch[1], 10) : 1;
+    setCurrentPage(page);
+    fetchOffers(page);
   };
 
   if (loading) {
@@ -481,7 +485,7 @@ export default function FreelancerOffersListPage() {
                         <div className="mb-4">
                           <div className="flex items-center gap-2 mb-2">
                             <MessageSquare className="w-4 h-4 text-gray-400" />
-                            <p className="text-sm font-medium text-gray-700">Client's Message</p>
+                            <p className="text-sm font-medium text-gray-700">Client&apos;s Message</p>
                           </div>
                           <p className="text-gray-600 text-sm line-clamp-2">{offer.message}</p>
                         </div>

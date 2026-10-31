@@ -406,7 +406,7 @@ export default function ClientActivityPage() {
               {/* End of list */}
               {!hasMore && filtered.length > 0 && (
                 <p className="text-center text-xs text-slate-400 font-medium py-2">
-                  You've reached the end · {filtered.length} event{filtered.length !== 1 ? "s" : ""}
+                  You&apos;ve reached the end ·{filtered.length} event{filtered.length !== 1 ? "s" : ""}
                 </p>
               )}
             </div>

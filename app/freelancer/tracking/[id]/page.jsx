@@ -23,8 +23,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import TimeBlockExplanationForm from "@/components/TimeBlockExplanationForm";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { mediaUrl } from "@/lib/utils";
 
 export default function SessionTimelineDetail() {
   const params = useParams();
@@ -325,13 +324,9 @@ export default function SessionTimelineDetail() {
     }
   };
 
-  // FIX: Use API_BASE_URL instead of undefined backendUrl
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return "";
-    if (imagePath.startsWith("http")) return imagePath;
-    if (imagePath.startsWith("/")) return `${API_BASE_URL}${imagePath}`;
-    return `${API_BASE_URL}/${imagePath}`;
-  };
+  // NEXT_PUBLIC_API_URL ends in /api/, so it cannot simply be prefixed to a
+  // /media/ path; mediaUrl() resolves against the API origin.
+  const getImageUrl = (imagePath) => mediaUrl(imagePath) || "";
 
   // Calculate visible thumbnails
   const visibleThumbnails = allScreenshots.slice(
@@ -853,7 +848,7 @@ export default function SessionTimelineDetail() {
                 No Time Blocks Recorded
               </h3>
               <p className="text-gray-600">
-                This session doesn't have any recorded time blocks.
+                This session doesn&apos;t have any recorded time blocks.
               </p>
             </div>
           )}

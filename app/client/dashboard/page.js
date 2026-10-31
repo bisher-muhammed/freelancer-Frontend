@@ -31,7 +31,7 @@ import { apiPrivate } from "@/lib/apiPrivate";
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: "INR",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount || 0);
@@ -361,7 +361,7 @@ export default function ClientDashboard() {
               Welcome back, {username}
             </h1>
             <p className="text-slate-500 mt-1.5 text-sm font-medium">
-              Here's everything happening across your projects today.
+              Here&apos;s everything happening across your projects today.
             </p>
           </div>
           <Link

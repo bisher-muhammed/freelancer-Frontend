@@ -19,6 +19,8 @@ import {
   Loader2
 } from 'lucide-react';
 
+const DEFAULT_MAX_BUDGET = 50000;
+
 export default function OpenProjectsList() {
   const router = useRouter();
   const [projects, setProjects] = useState([]);
@@ -51,37 +53,29 @@ export default function OpenProjectsList() {
   const primaryColor = '#227C70';
   const primaryHover = '#1a6359';
 
-  // Fetch projects on mount
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  // Apply filters when filter state changes
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      applyFilters();
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [filters.search, filters.category, filters.status, filters.minBudget, filters.maxBudget, filters.sortBy, filters.experience_level, allProjects]);
-
-  const fetchProjects = async () => {
+  async function fetchProjects() {
     setLoading(true);
     setErrors('');
     setSuccessMessage('');
-    
+
     try {
-      // Fetch all open projects without filters
-      const response = await apiPrivate.get('freelancer-projects/open');
-      const data = response.data;
-      
-      // Handle paginated or direct response
-      if (data.results) {
-        setAllProjects(data.results);
-      } else {
-        setAllProjects(data);
+      // Fetch all open projects (every API page) for client-side filtering;
+      // reading only the first page silently capped the list at 20 jobs.
+      const collected = [];
+      let page = 1;
+      let hasNext = true;
+      while (hasNext) {
+        const { data } = await apiPrivate.get('freelancer-projects/open/', { params: { page } });
+        if (Array.isArray(data)) {
+          collected.push(...data);
+          break;
+        }
+        collected.push(...(data.results || []));
+        hasNext = Boolean(data.next);
+        page += 1;
       }
-      
+      setAllProjects(collected);
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -92,7 +86,7 @@ export default function OpenProjectsList() {
     }
   };
 
-  const applyFilters = () => {
+  function applyFilters() {
     let filtered = [...allProjects];
 
     // Search filter
@@ -120,10 +114,21 @@ export default function OpenProjectsList() {
 
     // Experience level filter
     if (filters.experience_level) {
-      filtered = filtered.filter(project => 
+      filtered = filtered.filter(project =>
         project.experience_level?.toLowerCase() === filters.experience_level.toLowerCase()
       );
     }
+
+    // Budget range filter (the budget handlers previously changed state
+    // only). A project matches when its budget range overlaps the selected
+    // range; the default maximum means "no upper limit" so expensive
+    // projects are never hidden by default.
+    filtered = filtered.filter(project => {
+      const low = Number(project.budget_type === 'fixed' ? project.fixed_budget : project.hourly_min_rate) || 0;
+      const high = Number(project.budget_type === 'fixed' ? project.fixed_budget : project.hourly_max_rate) || low;
+      const underMax = filters.maxBudget >= DEFAULT_MAX_BUDGET || low <= filters.maxBudget;
+      return high >= filters.minBudget && underMax;
+    });
 
     // Sort
     filtered.sort((a, b) => {
@@ -153,14 +158,32 @@ export default function OpenProjectsList() {
     const paginatedProjects = filtered.slice(startIndex, endIndex);
 
     setProjects(paginatedProjects);
-    setPagination({
-      ...pagination,
+    // Functional update: keep the current page, only refresh derived fields
+    setPagination(prev => ({
+      ...prev,
       count: filtered.length,
       totalPages: totalPages,
-      nextPage: pagination.page < totalPages ? true : null,
-      prevPage: pagination.page > 1 ? true : null,
-    });
+      nextPage: prev.page < totalPages ? true : null,
+      prevPage: prev.page > 1 ? true : null,
+    }));
   };
+
+  // Effects are declared after the functions they call
+  // Fetch projects on mount
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads data on mount
+    fetchProjects();
+  }, []);
+
+  // Apply filters when filter state changes
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      applyFilters();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+    // pagination.page is a dependency so Prev/Next actually re-slice the list
+  }, [filters.search, filters.category, filters.status, filters.minBudget, filters.maxBudget, filters.sortBy, filters.experience_level, allProjects, pagination.page]);
 
   const navigateToDetails = (projectId) => {
     router.push(`/freelancer/project-details/${projectId}`);
@@ -187,18 +210,20 @@ export default function OpenProjectsList() {
   };
 
   const handleMinBudgetChange = (e) => {
-    const value = parseInt(e.target.value);
+    const value = parseInt(e.target.value, 10) || 0;
     // Ensure min doesn't exceed max
     if (value <= filters.maxBudget) {
       setFilters({ ...filters, minBudget: value });
+      setPagination({ ...pagination, page: 1 });
     }
   };
 
   const handleMaxBudgetChange = (e) => {
-    const value = parseInt(e.target.value);
+    const value = parseInt(e.target.value, 10) || 0;
     // Ensure max doesn't go below min
     if (value >= filters.minBudget) {
       setFilters({ ...filters, maxBudget: value });
+      setPagination({ ...pagination, page: 1 });
     }
   };
 
@@ -255,9 +280,10 @@ export default function OpenProjectsList() {
 
   const formatBudget = (project) => {
     if (project.budget_type === 'hourly') {
-      return `$${project.hourly_min_rate}/hr - $${project.hourly_max_rate}/hr`;
+      return `₹${project.hourly_min_rate}/hr - ₹${project.hourly_max_rate}/hr`;
     } else if (project.budget_type === 'fixed') {
-      return `$${project.fixed_budget?.toLocaleString()}`;
+      // DRF sends decimals as strings; convert before locale formatting
+      return `₹${Number(project.fixed_budget || 0).toLocaleString('en-IN')}`;
     }
     return 'Budget not specified';
   };
@@ -358,7 +384,7 @@ export default function OpenProjectsList() {
               <span className="text-sm font-semibold text-gray-700">Active Filters:</span>
               {filters.search && (
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full flex items-center gap-1 font-medium">
-                  Search: "{filters.search}"
+                  Search: &ldquo;{filters.search}&rdquo;
                   <button onClick={() => setFilters({...filters, search: ''})} className="hover:bg-blue-200 rounded-full p-0.5">
                     <XCircle className="w-3 h-3" />
                   </button>

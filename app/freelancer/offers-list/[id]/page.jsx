@@ -106,7 +106,7 @@ export default function FreelancerOfferDetailPage() {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(amount);
@@ -275,7 +275,7 @@ Valid Until: ${formatDate(offer?.valid_until)}`;
               <AlertCircle className="w-8 h-8 text-gray-400" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Offer Not Found</h2>
-            <p className="text-gray-600 mb-6">The offer you're looking for doesn't exist or has been removed.</p>
+            <p className="text-gray-600 mb-6">The offer you&apos;re looking for doesn&apos;t exist or has been removed.</p>
             <button
               onClick={() => router.push("/freelancer/offers-list")}
               className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium flex items-center justify-center gap-2"
@@ -342,7 +342,7 @@ Valid Until: ${formatDate(offer?.valid_until)}`;
                   <div className="flex items-start gap-3">
                     <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <p className="text-sm text-blue-700">
-                      Upon acceptance, you'll be able to start working on the project and communicate with the client through the platform.
+                      Upon acceptance, you&apos;ll be able to start working on the project and communicate with the client through the platform.
                     </p>
                   </div>
                 </div>
@@ -575,7 +575,7 @@ Valid Until: ${formatDate(offer?.valid_until)}`;
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-600 mt-1">•</span>
-                        <span>You'll be paid at {formatCurrency(offer.agreed_hourly_rate)} per hour for work completed</span>
+                        <span>You&apos;ll be paid at {formatCurrency(offer.agreed_hourly_rate)} per hour for work completed</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-600 mt-1">•</span>
@@ -597,7 +597,7 @@ Valid Until: ${formatDate(offer?.valid_until)}`;
                         <MessageSquare className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-gray-900">Client's Message</h3>
+                        <h3 className="font-bold text-gray-900">Client&apos;s Message</h3>
                         <p className="text-sm text-gray-600">Personal note from the client</p>
                       </div>
                     </div>

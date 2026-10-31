@@ -37,7 +37,7 @@ import jsPDF from "jspdf";
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: "INR",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount || 0);

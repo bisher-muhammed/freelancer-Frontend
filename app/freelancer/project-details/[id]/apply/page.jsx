@@ -226,7 +226,7 @@ export default function ProposalPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
         <XCircle className="w-16 h-16 text-red-500 mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Project not found</h2>
-        <p className="text-gray-600 mb-6">The project you're looking for doesn't exist or has been removed.</p>
+        <p className="text-gray-600 mb-6">The project you&apos;re looking for doesn&apos;t exist or has been removed.</p>
         <button
           onClick={() => router.push("/")}
           className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
@@ -346,10 +346,10 @@ export default function ProposalPage() {
               {project.budget_type === "fixed" && (
                 <div>
                   <label className="block font-medium text-gray-900 mb-2">
-                    Your Bid Amount ($) <span className="text-red-500">*</span>
+                    Your Bid Amount (₹) <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black">$</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black">₹</span>
                     <input
                       type="number"
                       name="bid_fixed_price"
@@ -365,7 +365,7 @@ export default function ProposalPage() {
                   </div>
                   {project.fixed_budget && (
                     <p className="text-sm text-gray-500 mt-2">
-                      Client's budget: ${parseFloat(project.fixed_budget).toLocaleString()}
+                      Client&apos;s budget: ₹{parseFloat(project.fixed_budget).toLocaleString('en-IN')}
                     </p>
                   )}
                 </div>
@@ -374,10 +374,10 @@ export default function ProposalPage() {
               {project.budget_type === "hourly" && (
                 <div>
                   <label className="block font-medium text-gray-900 mb-2">
-                    Your Hourly Rate ($) <span className="text-red-500">*</span>
+                    Your Hourly Rate (₹) <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
                     <input
                       type="number"
                       name="bid_hourly_rate"
@@ -393,7 +393,7 @@ export default function ProposalPage() {
                   </div>
                   {project.hourly_min_rate && project.hourly_max_rate && (
                     <p className="text-sm text-gray-500 mt-2">
-                      Client's range: ${project.hourly_min_rate} - ${project.hourly_max_rate}/hr
+                      Client&apos;s range: ₹{project.hourly_min_rate} - ₹{project.hourly_max_rate}/hr
                     </p>
                   )}
                 </div>

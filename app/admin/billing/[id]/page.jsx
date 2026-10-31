@@ -463,7 +463,7 @@ export default function AdminBillingDetailPage() {
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 px-4 py-2 rounded-xl">
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-4 h-4 text-green-600" />
-                      <span className="font-bold text-green-700">${calculateAmount()}</span>
+                      <span className="font-bold text-green-700">₹{calculateAmount()}</span>
                       <span className="text-sm text-green-600">payable</span>
                     </div>
                   </div>
@@ -843,7 +843,7 @@ const QuickStats = ({
       icon: CreditCard,
       iconColor: "indigo",
       label: "Hourly Rate",
-      value: `$${billingData.hourly_rate}/hr`,
+      value: `₹${billingData.hourly_rate}/hr`,
       bgColor: "indigo"
     }] : [])
   ];

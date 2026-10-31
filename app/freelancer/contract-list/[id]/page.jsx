@@ -105,7 +105,7 @@ const formatCurrency = (amount, options = {}) => {
   const value = Number(amount || 0);
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     ...options,
@@ -856,7 +856,7 @@ export default function FreelancerContractDetailPage() {
           <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">Contract Not Found</h3>
           <p className="text-gray-500 mb-6">
-            The contract you're looking for doesn't exist or you don't have access to it.
+            The contract you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.
           </p>
           <button
             onClick={() => router.push('/freelancer/contract-list')}
@@ -982,7 +982,7 @@ export default function FreelancerContractDetailPage() {
               </div>
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-gray-500">
-                  Click on the "Messages" tab to send messages
+                  Click on the &ldquo;Messages&rdquo; tab to send messages
                 </p>
                 <button
                   onClick={() => {
@@ -1124,7 +1124,7 @@ export default function FreelancerContractDetailPage() {
                         </div>
                       </div>
                       <div className="text-sm text-gray-600">
-                        That's you!
+                        That&apos;s you!
                       </div>
                     </div>
                   </div>
@@ -1367,7 +1367,7 @@ export default function FreelancerContractDetailPage() {
             <div>
               <h4 className="font-semibold text-blue-800 mb-2">FreelancerHub Protection &amp; Benefits</h4>
               <p className="text-sm text-blue-700">
-                As a freelancer, you're protected by FreelancerHub's secure payment system, dispute resolution process,
+                As a freelancer, you&apos;re protected by FreelancerHub&apos;s secure payment system, dispute resolution process,
                 and guaranteed payments. All contracts include milestone tracking and payment protection.
               </p>
               <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-blue-600">

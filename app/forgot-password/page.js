@@ -19,7 +19,8 @@ export default function ForgotPasswordPage() {
     try {
       const res = await apiPublic.post("forgot-password/", { email });
       setMessage("OTP sent to your email! Redirecting...");
-      setTimeout(() => router.push(`/verify-otp?email=${email}`), 1200);
+      // Encode so addresses like "a+b@x.com" survive the query string
+      setTimeout(() => router.push(`/verify-otp?email=${encodeURIComponent(email)}`), 1200);
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.response?.data?.email?.[0] || "Failed to send OTP";
       setError(errorMessage);
@@ -36,7 +37,7 @@ export default function ForgotPasswordPage() {
         </h2>
         
         <p className="text-sm text-gray-600 text-center mb-6">
-          Enter your email address and we'll send you an OTP to reset your password.
+          Enter your email address and we&apos;ll send you an OTP to reset your password.
         </p>
 
         {/* Error Message */}

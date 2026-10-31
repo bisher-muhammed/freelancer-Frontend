@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPrivate } from "@/lib/apiPrivate";
 import {
@@ -19,23 +19,17 @@ import {
 export default function MyProposalsPage() {
   const router = useRouter();
   const [proposals, setProposals] = useState([]);
-  const [filteredProposals, setFilteredProposals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  useEffect(() => {
-    fetchProposals();
-  }, []);
-
-  const fetchProposals = async () => {
+  async function fetchProposals() {
     setLoading(true);
     try {
       const response = await apiPrivate.get('/my-proposals/');
       setProposals(response.data.results || response.data || []);
-      setFilteredProposals(response.data.results || response.data || []);
       setError('');
     } catch (err) {
       console.error(err);
@@ -44,11 +38,8 @@ export default function MyProposalsPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    filterProposals();
-  }, [searchQuery, activeFilter, proposals]);
-
-  const filterProposals = () => {
+  // Derived from proposals + filters (no extra state / effect needed)
+  const filteredProposals = useMemo(() => {
     let filtered = [...proposals];
 
     // Filter by status
@@ -64,8 +55,13 @@ export default function MyProposalsPage() {
       );
     }
 
-    setFilteredProposals(filtered);
-  };
+    return filtered;
+  }, [proposals, activeFilter, searchQuery]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads data on mount
+    fetchProposals();
+  }, []);
 
   const getStatusCounts = () => {
     return {
@@ -307,9 +303,9 @@ export default function MyProposalsPage() {
                       <p className="text-xs text-gray-500">Bid Amount</p>
                       <p className="font-semibold text-gray-900">
                         {proposal.bid_fixed_price 
-                          ? `$${parseFloat(proposal.bid_fixed_price).toLocaleString()}`
+                          ? `₹${parseFloat(proposal.bid_fixed_price).toLocaleString()}`
                           : proposal.bid_hourly_rate 
-                          ? `$${proposal.bid_hourly_rate}/hr`
+                          ? `₹${proposal.bid_hourly_rate}/hr`
                           : 'Not specified'}
                       </p>
                     </div>

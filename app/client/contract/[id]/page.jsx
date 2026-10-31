@@ -73,6 +73,12 @@ export default function ClientContractDetailPage() {
   // Termination modal
   const [showTerminationModal, setShowTerminationModal] = useState(false);
 
+  // Completion confirmation + review dialogs
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState('');
@@ -198,14 +204,59 @@ export default function ClientContractDetailPage() {
     }
   };
 
+  const handleCompleteContract = async () => {
+    try {
+      setActionLoading(true);
+      await apiPrivate.post(`/contracts/${id}/complete/`);
+      setShowCompleteConfirm(false);
+      await fetchContract();
+      openDialog(
+        'Contract Completed',
+        'The contract is now completed. Any unused escrow will be settled and refunded by our team.'
+      );
+    } catch (err) {
+      setShowCompleteConfirm(false);
+      openDialog(
+        'Could Not Complete Contract',
+        err.response?.data?.detail || 'Failed to complete the contract. Please try again.'
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    try {
+      setActionLoading(true);
+      await apiPrivate.post('/contract-reviews/', {
+        contract: Number(id),
+        freelancer_rating: reviewRating,
+        freelancer_review: reviewText.trim(),
+      });
+      setShowReviewDialog(false);
+      setReviewText('');
+      await fetchContract();
+      openDialog('Thank You', 'Your review has been submitted.');
+    } catch (err) {
+      const data = err.response?.data;
+      openDialog(
+        'Review Failed',
+        data?.contract?.[0] || data?.freelancer_rating?.[0] || data?.detail ||
+        'Failed to submit the review. Please try again.'
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const downloadContract = () => {
     openDialog('Coming Soon', 'Contract download feature will be available soon.');
   };
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const formatMoney = (amount) => {
-    if (!amount) return '$0';
-    return `$${Number(amount).toLocaleString('en-US')}`;
+    if (!amount) return '₹0';
+    return `₹${Number(amount).toLocaleString('en-IN')}`;
   };
 
   const getOfferData = (contract) => {
@@ -389,20 +440,58 @@ export default function ClientContractDetailPage() {
     return events.sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
-  // ── Single action button per status ─────────────────────────────────────
+  // The API reports status "active" / "ended" / "disputed" plus end_reason
+  // and termination_request; derive the display state the UI is built for.
+  const getDisplayStatus = (c) => {
+    if (!c) return null;
+    if (c.status === 'active' && c.termination_request?.status === 'pending') return 'termination_requested';
+    if (c.status === 'ended' && c.end_reason === 'completed') return 'completed';
+    return c.status;
+  };
+
+  // ── Action buttons per status ────────────────────────────────────────────
   const getActionButtons = () => {
     if (!contract) return [];
 
-    switch (contract.status) {
-      case 'active':
-        return [{
-          label:    'Request Termination',
-          onClick:  () => setShowTerminationModal(true),
-          icon:     XCircle,
-          color:    'bg-red-600 hover:bg-red-700 text-white',
+    const reviewButton = contract.has_review
+      ? {
+          label:    'Review Submitted',
+          onClick:  () => {},
+          icon:     Star,
+          color:    'bg-gray-100 text-gray-600 cursor-not-allowed',
+          disabled: true,
+          fullWidth: true,
+        }
+      : {
+          label:    'Leave a Review',
+          onClick:  () => setShowReviewDialog(true),
+          icon:     Star,
+          color:    'bg-indigo-600 hover:bg-indigo-700 text-white',
           disabled: actionLoading,
           fullWidth: true,
-        }];
+        };
+
+    switch (getDisplayStatus(contract)) {
+      case 'active':
+        return [
+          {
+            label:    'Mark as Completed',
+            onClick:  () => setShowCompleteConfirm(true),
+            icon:     CheckCircle,
+            color:    'bg-green-600 hover:bg-green-700 text-white',
+            disabled: actionLoading,
+          },
+          {
+            label:    'Request Termination',
+            onClick:  () => setShowTerminationModal(true),
+            icon:     XCircle,
+            color:    'bg-red-600 hover:bg-red-700 text-white',
+            disabled: actionLoading,
+          },
+        ];
+
+      case 'ended':
+        return [reviewButton];
 
       case 'termination_requested':
         return [{
@@ -415,13 +504,7 @@ export default function ClientContractDetailPage() {
         }];
 
       case 'completed':
-        return [{
-          label:    'Leave a Review',
-          onClick:  () => openDialog('Coming Soon', 'Review feature coming soon!'),
-          icon:     Star,
-          color:    'bg-indigo-600 hover:bg-indigo-700 text-white',
-          fullWidth: true,
-        }];
+        return [reviewButton];
 
       case 'disputed':
         return [{
@@ -481,14 +564,14 @@ export default function ClientContractDetailPage() {
         <div className="max-w-6xl mx-auto text-center py-16">
           <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">Contract Not Found</h3>
-          <p className="text-gray-500 mb-6">The contract you're looking for doesn't exist or you don't have access to it.</p>
+          <p className="text-gray-500 mb-6">The contract you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
           <button onClick={() => router.push('/client/contract')} className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">View All Contracts</button>
         </div>
       </div>
     );
   }
 
-  const statusConfig   = getStatusConfig(contract.status);
+  const statusConfig   = getStatusConfig(getDisplayStatus(contract));
   const amounts        = calculateContractAmounts();
   const quickStats     = getQuickStats();
   const timelineEvents = getTimelineEvents();
@@ -569,7 +652,7 @@ export default function ClientContractDetailPage() {
                 <textarea placeholder="Type your message to the freelancer..." className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" rows="3" readOnly />
               </div>
               <div className="flex flex-col gap-2">
-                <p className="text-sm text-gray-500">Click on the "Messages" tab to send messages</p>
+                <p className="text-sm text-gray-500">Click on the &ldquo;Messages&rdquo; tab to send messages</p>
                 <button onClick={() => { setActiveTab('messages'); setShowMessageInput(false); }} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
                   Go to Messages
                 </button>
@@ -664,7 +747,7 @@ export default function ClientContractDetailPage() {
                         <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center"><User className="w-5 h-5 text-blue-600" /></div>
                         <div><p className="text-sm text-gray-500">Client</p><p className="font-semibold text-gray-900">{contract.client_name || 'You'}</p></div>
                       </div>
-                      <p className="text-sm text-gray-600">That's you!</p>
+                      <p className="text-sm text-gray-600">That&apos;s you!</p>
                     </div>
                     <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-3">
@@ -713,7 +796,7 @@ export default function ClientContractDetailPage() {
                       <p className="text-lg font-semibold text-red-600">+{formatMoney(amounts.platformFee)}</p>
                     </div>
                     <div className="flex justify-between items-center py-4 bg-blue-50 rounded-lg px-4">
-                      <div className="flex items-center gap-3"><Wallet className="w-6 h-6 text-blue-600" /><div><p className="font-medium text-blue-800">Total Cost to You</p><p className="text-sm text-blue-600">Amount you'll pay</p></div></div>
+                      <div className="flex items-center gap-3"><Wallet className="w-6 h-6 text-blue-600" /><div><p className="font-medium text-blue-800">Total Cost to You</p><p className="text-sm text-blue-600">Amount you&apos;ll pay</p></div></div>
                       <p className="text-2xl font-bold text-blue-700">{formatMoney(amounts.totalCost)}</p>
                     </div>
                   </div>
@@ -846,6 +929,93 @@ export default function ClientContractDetailPage() {
           isLoading={actionLoading}
         />
       )}
+
+      {/* Confirm completion (ends the contract; cannot be undone) */}
+      <Dialog open={showCompleteConfirm} onOpenChange={(open) => !actionLoading && setShowCompleteConfirm(open)}>
+        <DialogContent showCloseButton={false} className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mark contract as completed?</DialogTitle>
+            <DialogDescription>
+              This ends the contract. Any running work session is stopped and billed,
+              and the freelancer can no longer track time on it. Unused escrow is
+              settled and refunded to you afterwards. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setShowCompleteConfirm(false)}
+              disabled={actionLoading}
+              className="inline-flex justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleCompleteContract}
+              disabled={actionLoading}
+              className="inline-flex justify-center rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
+            >
+              {actionLoading ? 'Completing…' : 'Yes, complete contract'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Review the freelancer (allowed once the contract has ended) */}
+      <Dialog open={showReviewDialog} onOpenChange={(open) => !actionLoading && setShowReviewDialog(open)}>
+        <DialogContent showCloseButton={false} className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Review {contract.freelancer_name || 'the freelancer'}</DialogTitle>
+            <DialogDescription>Your rating is shown on the freelancer&apos;s public profile.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-1" role="radiogroup" aria-label="Rating">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={reviewRating === value}
+                  aria-label={`${value} star${value > 1 ? 's' : ''}`}
+                  onClick={() => setReviewRating(value)}
+                  className="p-1"
+                >
+                  <Star
+                    className={`w-7 h-7 ${value <= reviewRating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                  />
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              placeholder="How was working with this freelancer? (optional)"
+              className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setShowReviewDialog(false)}
+              disabled={actionLoading}
+              className="inline-flex justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmitReview}
+              disabled={actionLoading}
+              className="inline-flex justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {actionLoading ? 'Submitting…' : 'Submit review'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent showCloseButton={false} className="max-w-md">

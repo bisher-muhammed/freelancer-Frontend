@@ -6,6 +6,11 @@ export default function ContractMessages({ contract }) {
   // 🚨 Hard requirement
   const chatRoomId = contract?.chat_room_id;
 
+  // Hooks must run on every render (before any early return); useChat is a
+  // no-op while chatRoomId is missing.
+  const { messages, sendMessage, isConnected } = useChat(chatRoomId);
+  const [message, setMessage] = useState("");
+
   if (!chatRoomId) {
     return (
       <div className="p-4 text-sm text-gray-500">
@@ -13,9 +18,6 @@ export default function ContractMessages({ contract }) {
       </div>
     );
   }
-
-  const { messages, sendMessage, isConnected } = useChat(chatRoomId);
-  const [message, setMessage] = useState("");
 
   const handleSend = () => {
     const trimmed = message.trim();

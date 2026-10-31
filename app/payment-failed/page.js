@@ -38,7 +38,7 @@ export default function PaymentFailedPage() {
                 Payment Failed
               </h1>
               <p className="text-red-50 text-lg">
-                We couldn't process your payment
+                We couldn&apos;t process your payment
               </p>
             </div>
           </div>

@@ -118,7 +118,7 @@ export default function FreelancerSessionTime() {
           No Time Sessions
         </h3>
         <p className="text-gray-600">
-          You haven't recorded any work sessions yet.
+          You haven&apos;t recorded any work sessions yet.
         </p>
       </div>
     );

@@ -167,7 +167,10 @@ const ScreenshotsGallery = ({ screenshots, apiBaseUrl }) => {
       } else if (newStartIndex + THUMBNAILS_PER_VIEW > screenshots.length) {
         newStartIndex = screenshots.length - THUMBNAILS_PER_VIEW;
       }
-      
+
+      // Index is also changed by the thumbnail scroll buttons, so it stays
+      // state; this only re-centres it when the selected slide changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setThumbnailStartIndex(newStartIndex);
     }
   }, [currentSlideIndex, selectedScreenshot, screenshots.length]);

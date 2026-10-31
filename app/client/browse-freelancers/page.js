@@ -256,7 +256,7 @@ export default function BrowseFreelancers() {
                 <div className="flex items-center justify-between pt-5 border-t-2 border-slate-100 mb-4">
                   <div className="flex items-center gap-2 text-slate-900">
                     <DollarSign className="w-5 h-5 text-green-600" />
-                    <span className="font-bold text-lg">${freelancer.hourly_rate}</span>
+                    <span className="font-bold text-lg">₹{freelancer.hourly_rate}</span>
                     <span className="text-slate-500 font-medium">/hr</span>
                   </div>
                 </div>

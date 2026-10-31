@@ -102,7 +102,7 @@ export default function ClientOfferDetailPage() {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(amount);
@@ -246,7 +246,7 @@ Valid Until: ${formatDate(offer?.valid_until)}`;
               <AlertCircle className="w-8 h-8 text-gray-400" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Offer Not Found</h2>
-            <p className="text-gray-600 mb-6">The offer you're looking for doesn't exist or has been removed.</p>
+            <p className="text-gray-600 mb-6">The offer you&apos;re looking for doesn&apos;t exist or has been removed.</p>
             <button
               onClick={() => router.push("/client/offers")}
               className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium flex items-center justify-center gap-2"

@@ -63,14 +63,23 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    const resetToken = sessionStorage.getItem("passwordResetToken");
+    if (!resetToken) {
+      setError("Your reset session has expired. Please verify the OTP again.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await apiPublic.post("reset-password/", {
         email,
+        reset_token: resetToken,
         new_password: formData.password,
         confirm_new_password: formData.confirm,
       });
 
       if (res.data.success) {
+        sessionStorage.removeItem("passwordResetToken");
         setMessage("Password reset successfully! Redirecting to login...");
         setTimeout(() => router.push("/login"), 2000);
       } else {
@@ -79,6 +88,7 @@ export default function ResetPasswordPage() {
     } catch (err) {
       setError(
         err.response?.data?.detail ||
+        err.response?.data?.reset_token?.[0] ||
         err.response?.data?.confirm_new_password?.[0] ||
         err.response?.data?.new_password?.[0] ||
         err.response?.data?.email?.[0] ||

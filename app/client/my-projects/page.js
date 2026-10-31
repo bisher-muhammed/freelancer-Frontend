@@ -56,11 +56,11 @@ export default function MyProjectsPage() {
   const formatBudget = (project) => {
     if (project.budget_type === 'fixed') {
       const amount = parseFloat(project.fixed_budget || 0);
-      return { label: `$${amount.toLocaleString()}`, sub: 'Fixed price' };
+      return { label: `₹${amount.toLocaleString()}`, sub: 'Fixed price' };
     }
     const min = parseFloat(project.hourly_min_rate || 0);
     const max = parseFloat(project.hourly_max_rate || 0);
-    return { label: `$${min}–$${max}/hr`, sub: 'Hourly rate' };
+    return { label: `₹${min}–₹${max}/hr`, sub: 'Hourly rate' };
   };
 
   const calculateDaysAgo = (createdAt) => {

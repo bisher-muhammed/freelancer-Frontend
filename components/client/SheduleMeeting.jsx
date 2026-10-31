@@ -416,7 +416,7 @@ export default function MeetingModal({ isOpen, onClose, freelancerId, proposalId
                     rows={4}
                   />
                   <p className="text-xs text-gray-600 mt-1.5">
-                    Optional: Add details about what you'd like to discuss in this meeting
+                    Optional: Add details about what you&apos;d like to discuss in this meeting
                   </p>
                 </div>
 

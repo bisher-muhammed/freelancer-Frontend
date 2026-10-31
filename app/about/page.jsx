@@ -384,17 +384,17 @@ export default function AboutPage() {
             <div>
               <div className="mission-body">
                 <p>
-                  The freelance economy is broken. Clients can't tell who's qualified. Freelancers can't trust they'll get paid. Platforms profit from the chaos.
+                  The freelance economy is broken. Clients can&apos;t tell who&apos;s qualified. Freelancers can&apos;t trust they&apos;ll get paid. Platforms profit from the chaos.
                 </p>
                 <p>
-                  FreelanceHub is different. We built rigorous vetting from day one, escrow payments that actually protect both sides, and a matching algorithm that respects your time. No race to the bottom on pricing. No pay-to-win visibility.
+                  FreelancerHub is different. We built rigorous vetting from day one, escrow payments that actually protect both sides, and a matching algorithm that respects your time. No race to the bottom on pricing. No pay-to-win visibility.
                 </p>
                 <p>
-                  Our open beta launched in 2024. We're growing deliberately — because quality always wins over volume.
+                  Our open beta launched in 2024. We&apos;re growing deliberately — because quality always wins over volume.
                 </p>
               </div>
               <blockquote className="mission-quote">
-                <p>"No noise, no middlemen — just the right match for the right project."</p>
+                <p>&ldquo;No noise, no middlemen — just the right match for the right project.&rdquo;</p>
               </blockquote>
             </div>
           </div>
@@ -428,7 +428,7 @@ export default function AboutPage() {
           </h2>
           <div>
             <p className="cta-body">
-              Join thousands of freelancers and forward-thinking clients who've already made the switch to a platform built on actual trust.
+              Join thousands of freelancers and forward-thinking clients who&apos;ve already made the switch to a platform built on actual trust.
             </p>
             <div style={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
               <Link href="/register" className="btn-white">

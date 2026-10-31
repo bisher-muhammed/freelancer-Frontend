@@ -46,6 +46,7 @@ export default function ProjectDetailsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads data for the route id
     fetchProject();
   }, [id]);
 
@@ -359,8 +360,8 @@ export default function ProjectDetailsPage() {
                     <DollarSign className="w-5 h-5 text-gray-700 flex-shrink-0" />
                     <span className="text-xl font-bold text-gray-900 truncate">
                       {project.budget_type === 'fixed'
-                        ? `$${parseFloat(project.fixed_budget).toLocaleString()}`
-                        : `$${project.hourly_min_rate} - $${project.hourly_max_rate}`}
+                        ? `₹${parseFloat(project.fixed_budget).toLocaleString('en-IN')}`
+                        : `₹${project.hourly_min_rate} - ₹${project.hourly_max_rate}/hr`}
                     </span>
                   </div>
                   <p className="text-xs text-gray-600 mt-1">

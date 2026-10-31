@@ -247,9 +247,9 @@ export default function ProposalDetails() {
                 <p className="text-sm text-gray-500 mb-1">Your Bid</p>
                 <p className="text-xl font-bold text-gray-900">
                   {proposal.bid_fixed_price
-                    ? `$${parseFloat(proposal.bid_fixed_price).toLocaleString()}`
+                    ? `₹${parseFloat(proposal.bid_fixed_price).toLocaleString()}`
                     : proposal.bid_hourly_rate
-                    ? `$${proposal.bid_hourly_rate}/hr`
+                    ? `₹${proposal.bid_hourly_rate}/hr`
                     : "Not specified"}
                 </p>
               </div>
@@ -300,11 +300,11 @@ export default function ProposalDetails() {
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-sm font-semibold text-blue-900 mb-1">Client's Budget</h3>
+                <h3 className="text-sm font-semibold text-blue-900 mb-1">Client&apos;s Budget</h3>
                 <p className="text-sm text-blue-800">
                   {budgetInfo.type === "fixed"
-                    ? `Fixed: $${parseFloat(budgetInfo.amount).toLocaleString()}`
-                    : `Hourly: $${budgetInfo.min} - $${budgetInfo.max}/hr`}
+                    ? `Fixed: ₹${parseFloat(budgetInfo.amount).toLocaleString()}`
+                    : `Hourly: ₹${budgetInfo.min} - ₹${budgetInfo.max}/hr`}
                 </p>
               </div>
             </div>

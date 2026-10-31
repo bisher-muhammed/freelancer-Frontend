@@ -37,10 +37,20 @@ export default function VerifyOtpPage() {
         otp,
         purpose: "password_reset",
       });
+      // The reset endpoint requires this one-time token; keep it out of the
+      // URL (history, referrers) and scoped to this tab.
+      sessionStorage.setItem("passwordResetToken", res.data.reset_token);
       setMessage("OTP verified successfully! Redirecting...");
-      setTimeout(() => router.push(`/reset-password?email=${email}`), 1200);
+      setTimeout(
+        () => router.push(`/reset-password?email=${encodeURIComponent(email)}`),
+        1200
+      );
     } catch (err) {
-      setError(err.response?.data?.error || "Invalid OTP");
+      setError(
+        err.response?.data?.otp?.[0] ||
+        err.response?.data?.error ||
+        "Invalid OTP"
+      );
     } finally {
       setLoading(false);
     }
@@ -120,7 +130,7 @@ export default function VerifyOtpPage() {
         <div className="mt-6 pt-4 border-t border-gray-200">
           <div className="text-center">
             <p className="text-sm text-gray-600 mb-3">
-              Didn't receive the OTP?
+              Didn&apos;t receive the OTP?
             </p>
             <button
               onClick={handleResendOtp}

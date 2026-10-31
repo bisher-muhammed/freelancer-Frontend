@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata = {
-  title: "Your App",
-  description: "Client dashboard with persisted login",
+  title: "FreelancerHub",
+  description: "Hire freelancers and manage contracts, tracked time and payments.",
 };
 
 export default function RootLayout({ children }) {

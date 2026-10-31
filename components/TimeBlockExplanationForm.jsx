@@ -108,7 +108,9 @@ const TimeBlockExplanationForm = ({
         
         // 2. If block has explanation, also update its status
         if (blockDetails?.explanation) {
-          await apiPrivate.patch(`/admin/billing-units/${blockId}/explanation/review/`, {
+          // Time-block explanation review (the billing-units endpoint expects
+          // {action} and reviews billing units, not explanations)
+          await apiPrivate.patch(`/admin/time-blocks/${blockId}/explanation/review/`, {
             admin_status: adminStatus,
             admin_note: adminNote.trim(),
           });
@@ -228,7 +230,7 @@ const TimeBlockExplanationForm = ({
             <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2 mb-3">
                 <MessageSquare className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-bold text-blue-700">Freelancer's Explanation</span>
+                <span className="text-sm font-bold text-blue-700">Freelancer&apos;s Explanation</span>
               </div>
               <div className="bg-white p-3 rounded-lg border border-blue-100 mb-3">
                 <p className="text-sm text-gray-800">{blockDetails.explanation.explanation}</p>

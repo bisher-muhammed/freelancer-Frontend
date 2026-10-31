@@ -800,7 +800,7 @@ export default function PostProjectPage() {
                 {formData.budget_type === 'fixed' && (
                   <Field label="Project Budget" required error={errors.fixed_budget}>
                     <div className="relative max-w-xs">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">₹</span>
                       <input
                         type="number"
                         name="fixed_budget"
@@ -821,7 +821,7 @@ export default function PostProjectPage() {
                       <div>
                         <p className="text-xs text-slate-500 mb-1.5 font-medium">Min / hr</p>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
                           <input
                             type="number"
                             name="hourly_min_rate"
@@ -837,7 +837,7 @@ export default function PostProjectPage() {
                       <div>
                         <p className="text-xs text-slate-500 mb-1.5 font-medium">Max / hr</p>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
                           <input
                             type="number"
                             name="hourly_max_rate"

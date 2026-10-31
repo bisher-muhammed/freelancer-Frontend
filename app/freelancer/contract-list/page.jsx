@@ -61,8 +61,8 @@ export default function FreelancerContractPage() {
   // DATA EXTRACTION HELPERS
   // ============================
   const formatMoney = (amount) => {
-if (!amount) return '$0';
-  return `$${Number(amount).toLocaleString()}`;
+if (!amount) return '₹0';
+  return `₹${Number(amount).toLocaleString('en-IN')}`;
   };
 
   const getOfferData = (contract) => {
@@ -295,7 +295,7 @@ if (!amount) return '$0';
             <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No Contracts Yet</h3>
             <p className="text-gray-500 mb-6">
-              You don't have any active contracts. Start by applying to projects!
+              You don&apos;t have any active contracts. Start by applying to projects!
             </p>
             <button
               onClick={() => router.push('/projects')}

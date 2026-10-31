@@ -276,7 +276,7 @@ export default function FreelancerActivityPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Today's Activities</p>
+                <p className="text-sm font-medium text-gray-600">Today&apos;s Activities</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{stats.today}</p>
               </div>
               <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">

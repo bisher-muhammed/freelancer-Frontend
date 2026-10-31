@@ -500,7 +500,7 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
               <div className="max-w-xs">
                 <label className="block text-sm font-semibold text-gray-800 mb-1.5">Amount *</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">₹</span>
                   <input
                     type="number"
                     name="fixed_budget"
@@ -527,7 +527,7 @@ export default function EditProjectModal({ project, onClose, onUpdated }) {
                     <div key={field.name}>
                       <label className="block text-sm font-semibold text-gray-800 mb-1.5">{field.label} *</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">₹</span>
                         <input
                           type="number"
                           name={field.name}
