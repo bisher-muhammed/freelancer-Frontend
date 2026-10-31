@@ -142,8 +142,8 @@ export default function ClientContractPage() {
   // DATA EXTRACTION HELPERS
   // ============================
   const formatMoney = (amount) => {
-    if (!amount) return '$0';
-    return `$${Number(amount).toLocaleString()}`;
+    if (!amount) return '₹0';
+    return `₹${Number(amount).toLocaleString('en-IN')}`;
   };
 
   // Extract offer data safely
@@ -277,7 +277,7 @@ export default function ClientContractPage() {
             <Briefcase className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No Contracts Yet</h3>
             <p className="text-gray-500 mb-6">
-              You haven't created any contracts yet. Start by hiring a freelancer!
+              You haven&apos;t created any contracts yet. Start by hiring a freelancer!
             </p>
             <button
               onClick={() => router.push('/find-freelancers')}

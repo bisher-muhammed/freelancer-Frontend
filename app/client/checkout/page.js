@@ -8,15 +8,17 @@ import { Loader2, AlertCircle } from "lucide-react";
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const planId = searchParams.get("planId"); // Now matches the subscription page
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(Boolean(planId));
+  const [requestError, setRequestError] = useState("");
+
+  // A missing plan is known from the URL alone; no effect/state needed
+  const error = planId
+    ? requestError
+    : "No plan selected. Please go back and select a subscription plan.";
+  const setError = setRequestError;
 
   useEffect(() => {
-    if (!planId) {
-      setError("No plan selected. Please go back and select a subscription plan.");
-      setLoading(false);
-      return;
-    }
+    if (!planId) return;
 
     const createCheckoutSession = async () => {
       try {

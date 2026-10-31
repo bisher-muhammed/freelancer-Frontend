@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPrivate } from "@/lib/apiPrivate";
+import { mediaUrl } from "@/lib/utils";
 import {
   User, Mail, Phone, Calendar, Briefcase,
   Award, CheckCircle, Star, DollarSign,
@@ -37,17 +38,8 @@ export default function FreelancerProfilePage() {
   const primaryLight = '#e8f4f2';
 
   // Helper function to get full media URLs
-  const getFullMediaUrl = (path) => {
-    if (!path) return null;
-    
-    if (path.startsWith('http')) return path;
-    
-    if (path.startsWith('/media/')) {
-      return `http://localhost:8000${path}`;
-    }
-    
-    return `http://localhost:8000/media/${path}`;
-  };
+  // Resolved against NEXT_PUBLIC_API_URL (was hard-coded to localhost)
+  const getFullMediaUrl = mediaUrl;
 
   // Helper function to get categories from skill
   const getSkillCategories = (skill) => {
@@ -110,7 +102,7 @@ export default function FreelancerProfilePage() {
     if (!amount && amount !== 0) return "$0.00";
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);

@@ -114,12 +114,13 @@ export const logoutUser = createAsyncThunk(
 
 export const googleLogin = createAsyncThunk(
   "user/googleLogin",
-  async (token, { rejectWithValue }) => {
+  // Called as googleLogin({ token, timezone }) from the login page
+  async ({ token, timezone }, { rejectWithValue }) => {
     try {
 
       const res = await apiPublic.post(
         "google-login/",
-        { id_token: token },
+        { id_token: token, timezone },
         {
           withCredentials: true,
         }

@@ -8,7 +8,7 @@ export default function OtpPage() {
   const dispatch = useDispatch();
   const router = useRouter();
 
-  const pendingUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("pendingUser")) : null;
+  const pendingUser = typeof window !== "undefined" ? JSON.parse(sessionStorage.getItem("pendingUser")) : null;
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
@@ -97,11 +97,19 @@ export default function OtpPage() {
       const result = await dispatch(verifyOtpAndRegister(payload)).unwrap();
 
       if (result) {
-        localStorage.removeItem("pendingUser");
+        sessionStorage.removeItem("pendingUser");
         router.push("/login"); // redirect after success
       }
     } catch (err) {
-      setError(err?.otp || "Invalid OTP. Please check and try again.");
+      // DRF returns field errors as arrays, e.g. { otp: ["Invalid or expired OTP."] }
+      const firstError = (field) =>
+        Array.isArray(err?.[field]) ? err[field][0] : err?.[field];
+      setError(
+        firstError("otp") ||
+        firstError("password") ||
+        firstError("email") ||
+        "Invalid OTP. Please check and try again."
+      );
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {

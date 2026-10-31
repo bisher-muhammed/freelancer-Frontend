@@ -17,14 +17,14 @@ const fmt = (v, digits = 2) =>
   v == null
     ? "—"
     : new Intl.NumberFormat("en-US", {
-        style: "currency", currency: "USD", maximumFractionDigits: digits,
+        style: "currency", currency: "INR", maximumFractionDigits: digits,
       }).format(v);
 
 const fmtShort = (v) => {
   if (v == null) return "—";
-  if (v >= 100_000) return `$${(v / 100_000).toFixed(1)}L`;
-  if (v >= 1_000)   return `$${(v / 1_000).toFixed(1)}K`;
-  return `$${Number(v).toFixed(2)}`;
+  if (v >= 100_000) return `₹${(v / 100_000).toFixed(1)}L`;
+  if (v >= 1_000)   return `₹${(v / 1_000).toFixed(1)}K`;
+  return `₹${Number(v).toFixed(2)}`;
 };
 
 const fmtMonth = (iso) =>

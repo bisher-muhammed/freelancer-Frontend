@@ -456,10 +456,10 @@ export default function ClientProposalsPage() {
                             <span>{getTimeAgo(proposal.created_at)}</span>
                           </div>
                           {proposal.bid_hourly_rate && (
-                            <><span className="text-gray-300">•</span><span className="text-xs font-medium text-gray-700">${proposal.bid_hourly_rate}/hr</span></>
+                            <><span className="text-gray-300">•</span><span className="text-xs font-medium text-gray-700">₹{proposal.bid_hourly_rate}/hr</span></>
                           )}
                           {proposal.bid_fixed_price && (
-                            <><span className="text-gray-300">•</span><span className="text-xs font-medium text-gray-700">${proposal.bid_fixed_price} fixed</span></>
+                            <><span className="text-gray-300">•</span><span className="text-xs font-medium text-gray-700">₹{proposal.bid_fixed_price} fixed</span></>
                           )}
                         </div>
                       </div>

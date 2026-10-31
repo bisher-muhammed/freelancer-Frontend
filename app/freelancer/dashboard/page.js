@@ -98,16 +98,16 @@ const fmt = (val) => {
   if (val === null || val === undefined) return "—";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: "INR",
     maximumFractionDigits: 2,
   }).format(val);
 };
 
 const fmtShort = (v) => {
   if (v == null) return "—";
-  if (v >= 100_000) return `$${(v / 100_000).toFixed(1)}L`;
-  if (v >= 1_000)   return `$${(v / 1_000).toFixed(1)}K`;
-  return `$${Number(v).toFixed(0)}`;
+  if (v >= 100_000) return `₹${(v / 100_000).toFixed(1)}L`;
+  if (v >= 1_000)   return `₹${(v / 1_000).toFixed(1)}K`;
+  return `₹${Number(v).toFixed(0)}`;
 };
 
 const fmtMonthShort = (iso) =>
@@ -348,7 +348,7 @@ export default function FreelancerDashboard() {
                   Welcome back, {username}.
                 </h1>
                 <p className="text-gray-500 text-sm mt-1.5">
-                  Here's how your business is doing right now.
+                  Here&apos;s how your business is doing right now.
                 </p>
               </div>
 

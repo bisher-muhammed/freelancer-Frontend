@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPrivate } from "@/lib/apiPrivate";
+import { mediaUrl } from "@/lib/utils";
 import {
   User, Mail, Phone, Calendar, Briefcase,
   Award, CheckCircle, XCircle, Star, DollarSign,
@@ -35,15 +36,8 @@ export default function FreelancersPage() {
   const primaryLight = '#e8f4f2';
   const primaryDark = '#1a5f55';
 
-  // Helper function to get full media URLs
-  const getFullMediaUrl = (path) => {
-    if (!path) return null;
-    if (path.startsWith('http')) return path;
-    if (path.startsWith('/media/')) {
-      return `http://localhost:8000${path}`;
-    }
-    return `http://localhost:8000/media/${path}`;
-  };
+  // Helper function to get full media URLs (was hard-coded to localhost)
+  const getFullMediaUrl = mediaUrl;
 
   useEffect(() => {
     if (!userId) return;
@@ -99,7 +93,8 @@ export default function FreelancersPage() {
     setError("");
 
     try {
-      await apiPrivate.delete(`/users/${freelancer.id}/`);
+      // freelancer.id is the profile id; the users endpoint needs the user id
+      await apiPrivate.delete(`/users/${freelancer.user_id}/`);
       setSuccessMessage("Freelancer deleted successfully!");
       setTimeout(() => {
         router.push('/admin/users');
@@ -136,7 +131,7 @@ export default function FreelancersPage() {
     if (!amount && amount !== 0) return "$0.00";
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
@@ -893,7 +888,7 @@ export default function FreelancersPage() {
 
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-red-800">
-                  <strong>Warning:</strong> This will permanently delete the freelancer's account and all associated data including profile, skills, education, and experience.
+                  <strong>Warning:</strong> This will permanently delete the freelancer&apos;s account and all associated data including profile, skills, education, and experience. Accounts with contract or payment history cannot be deleted; block them instead.
                 </p>
               </div>
 

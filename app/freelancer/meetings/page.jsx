@@ -78,7 +78,7 @@ export default function FreelancerMeetingsPage() {
             </svg>
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No Meetings Assigned</h3>
-          <p className="text-gray-600 mb-6">You don't have any meetings scheduled at the moment.</p>
+          <p className="text-gray-600 mb-6">You don&apos;t have any meetings scheduled at the moment.</p>
           <button
             onClick={() => router.push('/dashboard')}
             className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"

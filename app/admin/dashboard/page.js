@@ -63,7 +63,7 @@ export default function AdminDashboard() {
     if (!value && value !== 0) return "$0.00";
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "INR",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value);
@@ -199,7 +199,7 @@ export default function AdminDashboard() {
             Admin Dashboard
           </h1>
           <p className="text-gray-500 mt-1 text-sm">
-            Welcome back, <span className="font-medium text-gray-700">{username}</span>. Here's your platform overview.
+            Welcome back, <span className="font-medium text-gray-700">{username}</span>. Here&apos;s your platform overview.
           </p>
         </div>
         <button

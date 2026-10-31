@@ -70,12 +70,12 @@ export default function ProjectDetailPage() {
     }
   };
 
-  // ✅ Fix 2: Use USD, not INR
+  // Display in INR: Stripe checkout and invoices are charged in INR
   const formatCurrency = (amount) => {
-    if (!amount) return '$0';
-    return new Intl.NumberFormat('en-US', {
+    if (!amount) return '₹0';
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -237,7 +237,7 @@ export default function ProjectDetailPage() {
 
               {/* Key Info Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {/* ✅ Fix 2: Correct USD budget */}
+                {/* Budget (INR) */}
                 <div className="bg-blue-50 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <DollarSign className="h-5 w-5 text-blue-600" />

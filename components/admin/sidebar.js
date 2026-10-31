@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   LayoutDashboard, Users, Briefcase, BarChart3, Settings,
   CreditCard, AlertTriangle, MessageSquare, X, Shield, Lock,
@@ -53,16 +53,20 @@ const NAV_GROUPS = [
 ];
 
 // ─── SSR-safe mobile detection ───────────────────────────────────────────────
+const MOBILE_QUERY = "(max-width: 1023px)";
+
+function subscribeToMobileQuery(onChange) {
+  const mq = window.matchMedia(MOBILE_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1023px)");
-    setIsMobile(mq.matches);
-    const handler = (e) => setIsMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  return isMobile;
+  return useSyncExternalStore(
+    subscribeToMobileQuery,
+    () => window.matchMedia(MOBILE_QUERY).matches,
+    () => false, // server render: assume desktop
+  );
 }
 
 // ─── NavItem ─────────────────────────────────────────────────────────────────
@@ -123,11 +127,11 @@ function NavItem({ item, isActive, collapsed, onClick }) {
 
 // ─── NavGroup ─────────────────────────────────────────────────────────────────
 function NavGroup({ group, pathname, collapsed, onNavClick }) {
-  const [open, setOpen] = useState(true);
+  const [userOpen, setOpen] = useState(true);
   const hasActive = group.items.some((i) => i.href === pathname);
 
-  // Always keep the active group expanded
-  useEffect(() => { if (hasActive) setOpen(true); }, [hasActive]);
+  // Always keep the active group expanded (derived, no effect needed)
+  const open = userOpen || hasActive;
 
   return (
     <div>

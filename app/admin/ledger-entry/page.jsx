@@ -153,7 +153,7 @@ export default function LedgerAdminPage() {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const fmt = (amount) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(amount);
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(amount);
 
   const fmtDate = (ts) =>
     new Date(ts).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });

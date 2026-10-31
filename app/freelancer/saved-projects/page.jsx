@@ -133,8 +133,16 @@ export default function SavedProjectsList() {
 
   const formatBudget = (savedProject) => {
     const project = savedProject.project;
-    if (!project || !project.budget) return 'Budget not specified';
-    return `$${parseFloat(project.budget).toLocaleString()}`;
+    // The API returns budget_type + fixed_budget / hourly rates (there is
+    // no `budget` field), so every saved project showed "not specified".
+    if (!project) return 'Budget not specified';
+    if (project.budget_type === 'fixed' && project.fixed_budget != null) {
+      return `₹${parseFloat(project.fixed_budget).toLocaleString('en-IN')}`;
+    }
+    if (project.budget_type === 'hourly' && project.hourly_min_rate != null) {
+      return `₹${project.hourly_min_rate} - ₹${project.hourly_max_rate}/hr`;
+    }
+    return 'Budget not specified';
   };
 
   const formatTimeAgo = (dateString) => {

@@ -734,16 +734,16 @@ export default function HowItWorksPage() {
             <div className="fee-breakdown" aria-label="Payment breakdown example">
               <div className="fee-row">
                 <span className="fee-row-label">Total project budget</span>
-                <span className="fee-row-value">$2,000.00</span>
+                <span className="fee-row-value">₹2,000.00</span>
               </div>
               <div className="fee-divider" aria-hidden="true" />
               <div className="fee-row">
                 <span className="fee-row-label">Platform fee (10%)</span>
-                <span className="fee-row-value">− $200.00</span>
+                <span className="fee-row-value">− ₹200.00</span>
               </div>
               <div className="fee-row" style={{ background: "rgba(255,255,255,.14)" }}>
                 <span className="fee-row-label" style={{ color: "#fff", fontWeight: 500 }}>Freelancer receives</span>
-                <span className="fee-row-value accent">$1,800.00</span>
+                <span className="fee-row-value accent">₹1,800.00</span>
               </div>
             </div>
           </div>

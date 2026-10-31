@@ -137,7 +137,7 @@ export default function ClientOfferListPage() {
     const numericAmount = parseNumber(amount);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(numericAmount);
@@ -211,7 +211,7 @@ export default function ClientOfferListPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">My Offers</h1>
               <p className="text-gray-600">
-                Manage and track offers you've sent to freelancers
+                Manage and track offers you&apos;ve sent to freelancers
               </p>
             </div>
             <div className="flex items-center gap-3">

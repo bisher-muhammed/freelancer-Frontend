@@ -13,13 +13,9 @@ export default function LoginPage() {
   const { loading, error, successMessage, user } = useSelector((state) => state.user);
 
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [timezone, setTimezone] = useState("");
 
-  // Detect browser timezone on mount
-  useEffect(() => {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    setTimezone(tz);
-  }, []);
+  // Browser timezone, read when submitting (no state/effect needed)
+  const getTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Clear previous status on mount
   useEffect(() => {
@@ -44,18 +40,20 @@ export default function LoginPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     dispatch(resetStatus());
-    dispatch(loginUser({ ...formData, timezone }));
+    dispatch(loginUser({ ...formData, timezone: getTimezone() }));
   };
 
   const handleGoogleSuccess = (response) => {
     dispatch(resetStatus());
-    dispatch(googleLogin({ token: response.credential, timezone }))
+    dispatch(googleLogin({ token: response.credential, timezone: getTimezone() }))
       .unwrap()
       .then((data) => {
         if (data.user?.role === "client") router.push("/client/dashboard");
         else if (data.user?.role === "freelancer") router.push("/freelancer/dashboard");
-        else router.push("/admin/dashboard");
-      });
+        else if (data.user?.role === "admin") router.push("/admin/dashboard");
+      })
+      // The rejection is already shown via the slice's error state
+      .catch(() => {});
   };
 
   return (
@@ -140,7 +138,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-sm text-gray-600 mt-4">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <span
             onClick={() => router.push("/register")}
             className="text-indigo-600 font-medium hover:underline cursor-pointer"

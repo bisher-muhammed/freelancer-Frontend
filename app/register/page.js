@@ -106,7 +106,9 @@ export default function RegisterPage() {
     dispatch(sendOtp({ email: formData.email }))
       .unwrap()
       .then(() => {
-        localStorage.setItem("pendingUser", JSON.stringify(formData));
+        // Contains the plain password until OTP verification: keep it in
+        // tab-scoped sessionStorage, not persistent localStorage.
+        sessionStorage.setItem("pendingUser", JSON.stringify(formData));
         router.push("/otp");
       })
       .catch((err) => console.error("OTP failed:", err));
@@ -229,7 +231,7 @@ export default function RegisterPage() {
                 <span className="brand-font text-lg font-bold text-slate-900">FreelanceHub</span>
               </div>
               <h1 className="brand-font text-2xl font-extrabold text-slate-900">Create your account</h1>
-              <p className="text-slate-500 text-sm mt-1">Step 1 of 2 — we'll verify your email next</p>
+              <p className="text-slate-500 text-sm mt-1">Step 1 of 2 — we&apos;ll verify your email next</p>
             </div>
 
             {/* Desktop heading */}
@@ -238,7 +240,7 @@ export default function RegisterPage() {
                 Create your account
               </h1>
               <p className="text-slate-500 text-sm">
-                We'll send a verification code to your email.
+                We&apos;ll send a verification code to your email.
               </p>
             </div>
 

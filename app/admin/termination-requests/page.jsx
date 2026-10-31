@@ -28,7 +28,7 @@ function ResultDialog({ result, onClose }) {
   const isRefund = result?.type === 'refund';
   const isError  = result?.type === 'error';
 
-  const fmt = (v) => `$${Number(v || 0).toLocaleString('en-IN')}`;
+  const fmt = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
 
   const title = !result ? '' :
     isError  ? 'Action Failed' :
@@ -69,7 +69,7 @@ function ResultDialog({ result, onClose }) {
               )}
               {result.data.refunded_amount && Number(result.data.refunded_amount) > 0 && !result.data.already_settled && (
                 <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
-                  <strong>Next step:</strong> Click "Refund Escrow" to send {fmt(result.data.refunded_amount)} back to the client.
+                  <strong>Next step:</strong> Click &ldquo;Refund Escrow&rdquo; to send {fmt(result.data.refunded_amount)} back to the client.
                 </div>
               )}
             </div>
@@ -256,7 +256,22 @@ export default function AdminTerminationRequestsPage() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   // { requestId, action: 'approve' | 'reject' }
 
-  useEffect(() => { fetchTerminationRequests(); }, []);
+  // Normally completed contracts whose escrow still needs settle/refund
+  const [completedContracts, setCompletedContracts] = useState([]);
+
+  useEffect(() => {
+    fetchTerminationRequests();
+    fetchCompletedContracts();
+  }, []);
+
+  const fetchCompletedContracts = async () => {
+    try {
+      const res = await apiPrivate.get('/admin/contracts/completed/');
+      setCompletedContracts(res.data || []);
+    } catch {
+      setCompletedContracts([]);
+    }
+  };
 
   const fetchTerminationRequests = async () => {
     try {
@@ -307,7 +322,7 @@ export default function AdminTerminationRequestsPage() {
     } catch { return 'Invalid date'; }
   };
 
-  const formatMoney = (v) => `$${Number(v || 0).toLocaleString('en-IN')}`;
+  const formatMoney = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
 
   const getDaysAgo = (d) => {
     if (!d) return '';
@@ -751,6 +766,63 @@ export default function AdminTerminationRequestsPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* ── Completed contracts: escrow settlement ───────────────────────── */}
+        {completedContracts.length > 0 && (
+          <section className="mt-8" aria-labelledby="completed-contracts-heading">
+            <h2 id="completed-contracts-heading" className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Completed Contracts — Escrow Settlement
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Clients marked these contracts as completed. Settle each one, then refund any unused escrow.
+            </p>
+            <div className="space-y-4">
+              {completedContracts.map((c) => {
+                const payment = c.offer?.payment;
+                const settled = ['settled', 'refund_processing', 'refunded'].includes(payment?.status);
+                const refunded = ['refunded', 'refund_processing'].includes(payment?.status);
+                const refreshCompleted = () => fetchCompletedContracts();
+                return (
+                  <div key={c.id} className="bg-white border rounded-xl p-5">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          Contract #{c.id}{c.project_title ? ` · ${c.project_title}` : ''}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Client: {c.client?.name} · Freelancer: {c.freelancer?.name} · Completed {formatDate(c.ended_at)}
+                        </p>
+                      </div>
+                      <div className="text-sm text-gray-700 md:text-right">
+                        <div>Escrow: <span className="font-semibold">{formatMoney(payment?.amount)}</span></div>
+                        {settled && (
+                          <div>
+                            Released {formatMoney(payment?.released_amount)} · Refundable {formatMoney(payment?.refundable_amount)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <AdminSettleContractButton
+                        contractId={c.id}
+                        disabled={settled}
+                        onSuccess={refreshCompleted}
+                        onResult={setModalResult}
+                      />
+                      <AdminRefundEscrowButton
+                        contractId={c.id}
+                        disabled={!settled || refunded}
+                        onSuccess={refreshCompleted}
+                        onResult={setModalResult}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         )}
       </div>
     </div>
