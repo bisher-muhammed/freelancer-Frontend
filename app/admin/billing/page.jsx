@@ -58,6 +58,7 @@ function toNumber(value) {
   return Number.parseFloat(value) || 0;
 }
 
+
 const formatCurrency = (amount) => currencyFormatter.format(toNumber(amount));
 const toHours = (seconds = 0) => Math.round((seconds / 3600) * 100) / 100;
 
